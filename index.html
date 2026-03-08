@@ -15,12 +15,18 @@
     <p id="result">ここに結果が表示されます</p>
 
     <script>
-        function summarizeText() {
+        async function summarizeText() {
             const input = document.getElementById('userInput').value;
             const result = document.getElementById('result');
+            result.innerText = "要約中...";
 
-            // 今は仮の動作です。後でここにAIのAPIを接続します。
-            result.innerText = "「" + input + "」をAIが頑張って要約します（準備中...）";
+            const response = await fetch('/api/summarize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: input })
+            });
+            const data = await response.json();
+            result.innerText = data.summary;
         }
     </script>
 </body>

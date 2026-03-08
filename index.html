@@ -3,13 +3,23 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>AI Tool Base</title>
+    <title>AI一言ツール</title>
 </head>
 
 <body>
-    <h1>AIツール枠組み</h1>
-    <div id="app">
-    </div>
+    <h1>AIポジティブ変換</h1>
+    <input type="text" id="userInput" placeholder="何か入力してね">
+    <button onclick="transformText()">変換する</button>
+    <p id="result">ここに結果が出ます</p>
+
+    <script>
+        function transformText() {
+            const input = document.getElementById('userInput').value;
+            const result = document.getElementById('result');
+            // 仮の動作（まずはAIなしで動くか確認）
+            result.innerText = "AIが考えています...「" + input + "」は最高ですね！";
+        }
+    </script>
 </body>
 
 </html>

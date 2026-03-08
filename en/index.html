@@ -7,43 +7,71 @@
 
     <style>
         body {
-            font-family: system-ui, sans-serif;
-            max-width: 900px;
-            margin: 40px auto;
-            padding: 20px;
-            line-height: 1.7;
-        }
-
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-        }
-
-        h1 {
-            font-size: 36px;
+            font-family: Arial, sans-serif;
+            background: #f5f6f8;
             margin: 0;
         }
 
-        .lang {
-            font-size: 14px;
+        header {
+            background: #2563eb;
+            color: white;
+            padding: 30px 0;
+            text-align: center;
         }
 
-        .description {
-            margin-bottom: 30px;
-            font-size: 16px;
-            color: #444;
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
         }
 
         .tools {
-            font-size: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 20px;
+        }
+
+        .tool {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .tool h3 {
+            margin-top: 0;
+        }
+
+        .tool a {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 8px 14px;
+            background: #2563eb;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+
+        .tool a:hover {
+            background: #1e4fd8;
+        }
+
+        .lang {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .lang a {
+            margin: 0 10px;
+            text-decoration: none;
+            color: #2563eb;
         }
 
         footer {
+            text-align: center;
             margin-top: 60px;
-            font-size: 13px;
             color: #777;
+            font-size: 14px;
         }
     </style>
 
@@ -53,24 +81,31 @@
 
     <header>
         <h1>AI Tools</h1>
-
-        <div class="lang">
-            <a href="/">日本語</a> | English
-        </div>
+        <p>Independent AI tools developed as personal projects</p>
     </header>
 
-    <div class="description">
-        This site hosts AI tools developed as independent personal projects.
+    <div class="container">
+
+        <div class="lang">
+            <a href="/">日本語</a>
+        </div>
+
+        <h2>Tools</h2>
+
+        <div class="tools">
+
+            <div class="tool">
+                <h3>Text Summarizer</h3>
+                <p>Summarize long text into a short version.</p>
+                <a href="/en/summarizer/">Open Tool</a>
+            </div>
+
+        </div>
+
     </div>
 
-    <ul class="tools">
-        <li>
-            <a href="/en/summarizer/">Text Summarizer</a>
-        </li>
-    </ul>
-
     <footer>
-        © AI Tools Lab
+        <p>© AI Tools</p>
     </footer>
 
 </body>

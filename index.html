@@ -1,56 +1,120 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
-    <title>AI要約ツール</title>
+    <title>AI Tools</title>
+
     <style>
-        /* 入力エリアを大きくする */
-        #userInput {
-            width: 100%;
-            height: 200px;
-            font-size: 18px;
-            padding: 10px;
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f6f8;
+            margin: 0;
         }
 
-        /* ボタンを大きくする */
-        button {
-            font-size: 20px;
-            padding: 10px 20px;
-            margin: 10px 0;
+        header {
+            background: #2563eb;
+            color: white;
+            padding: 30px 0;
+            text-align: center;
         }
 
-        /* 結果の文字を大きくする */
-        #result {
-            font-size: 18px;
-            line-height: 1.6;
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        .tools {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 20px;
+        }
+
+        .tool {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .tool h3 {
+            margin-top: 0;
+        }
+
+        .tool a {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 8px 14px;
+            background: #2563eb;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+
+        .tool a:hover {
+            background: #1e4fd8;
+        }
+
+        .lang {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .lang a {
+            margin: 0 10px;
+            text-decoration: none;
+            color: #2563eb;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 60px;
+            color: #777;
+            font-size: 14px;
         }
     </style>
+
 </head>
 
 <body>
-    <h1>AI要約ツール</h1>
-    <textarea id="userInput" rows="5" cols="40" placeholder="要約したい文章を入力してください"></textarea>
-    <br>
-    <button onclick="summarizeText()">要約する</button>
-    <p><strong>要約結果:</strong></p>
-    <p id="result">ここに結果が表示されます</p>
 
-    <script>
-        async function summarizeText() {
-            const input = document.getElementById('userInput').value;
-            const result = document.getElementById('result');
-            result.innerText = "要約中...";
+    <header>
+        <h1>AI Tools</h1>
+        <p>Simple online tools powered by AI</p>
+    </header>
 
-            const response = await fetch('/api/summarize', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: input })
-            });
-            const data = await response.json();
-            result.innerText = data.summary;
-        }
-    </script>
+    <div class="container">
+
+        <div class="lang">
+            <a href="/ja/">日本語</a> |
+            <a href="/en/">English</a>
+        </div>
+
+        <h2>Tools</h2>
+
+        <div class="tools">
+
+            <div class="tool">
+                <h3>Text Summarizer</h3>
+                <p>Summarize long text into a short version.</p>
+                <a href="/en/summarizer/">Open Tool</a>
+            </div>
+
+            <div class="tool">
+                <h3>文章要約ツール</h3>
+                <p>長い文章を短く要約します。</p>
+                <a href="/ja/summarizer/">ツールを開く</a>
+            </div>
+
+        </div>
+
+    </div>
+
+    <footer>
+        <p>© AI Tools</p>
+    </footer>
+
 </body>
 
 </html>

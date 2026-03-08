@@ -1,39 +1,40 @@
-export async function onRequest(context) {
-    const { request, env } = context;
+export async function onRequestPost(context) {
 
-    if (request.method !== "POST") {
-        return new Response("Method Not Allowed", { status: 405 });
+    const { text } = await context.request.json()
+
+    if (!text) {
+        return Response.json({ summary: "No text provided" })
     }
 
-    try {
-        const body = await request.json();
+    if (text.length > 300) {
+        return Response.json({
+            summary: "文字数が多すぎます（最大300文字）"
+        })
+    }
 
-        // 最新モデル gemini-2.5-flash を指定
-        // もし404エラーが出る場合は、gemini-2.0-flash に書き換えてください
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${env.GEMINI_API_KEY}`;
+    const apiKey = context.env.GEMINI_API_KEY
 
-        const response = await fetch(url, {
+    const response = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + apiKey,
+        {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json"
+            },
             body: JSON.stringify({
-                contents: [{ parts: [{ text: "以下の文章を簡潔に要約してください：\n\n" + body.text }] }]
+                contents: [{
+                    parts: [{
+                        text: "次の文章を要約してください:\n" + text
+                    }]
+                }]
             })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            // 400エラー（APIキー不正）などの詳細を画面に返す
-            const errorMsg = data.error ? data.error.message : "不明なAPIエラー";
-            return new Response(JSON.stringify({ summary: "AI通信エラー: " + errorMsg }), { status: response.status });
         }
+    )
 
-        const summary = data.candidates[0].content.parts[0].text;
-        return new Response(JSON.stringify({ summary }), {
-            headers: { "Content-Type": "application/json" }
-        });
+    const data = await response.json()
 
-    } catch (error) {
-        return new Response(JSON.stringify({ summary: "システムエラー: " + error.message }), { status: 500 });
-    }
+    const summary =
+        data.candidates?.[0]?.content?.parts?.[0]?.text ?? ""
+
+    return Response.json({ summary })
 }

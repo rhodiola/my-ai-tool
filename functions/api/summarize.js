@@ -1,7 +1,6 @@
 export async function onRequest(context) {
     const { request, env } = context;
 
-    // POSTメソッド以外は拒否
     if (request.method !== "POST") {
         return new Response("Method Not Allowed", { status: 405 });
     }
@@ -9,8 +8,8 @@ export async function onRequest(context) {
     try {
         const body = await request.json();
 
-        // 現在利用可能なモデル名は 'gemini-1.5-flash' です
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`;
+        // モデル名を gemini-2.5-flash に変更
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${env.GEMINI_API_KEY}`;
 
         const response = await fetch(url, {
             method: "POST",
@@ -22,7 +21,6 @@ export async function onRequest(context) {
 
         const data = await response.json();
 
-        // APIからのレスポンスエラーを確認
         if (!response.ok) {
             return new Response(JSON.stringify({ summary: "APIエラー: " + JSON.stringify(data) }), { status: response.status });
         }

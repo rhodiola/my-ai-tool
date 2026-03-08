@@ -1,77 +1,54 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 
 <head>
     <meta charset="UTF-8">
-    <title>AI Tools</title>
+    <title>AIツール</title>
 
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background: #f5f6f8;
-            margin: 0;
-        }
-
-        header {
-            background: #2563eb;
-            color: white;
-            padding: 30px 0;
-            text-align: center;
-        }
-
-        .container {
+            font-family: system-ui, sans-serif;
             max-width: 900px;
             margin: 40px auto;
             padding: 20px;
+            line-height: 1.7;
         }
 
-        .tools {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-            gap: 20px;
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
         }
 
-        .tool {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-        }
-
-        .tool h3 {
-            margin-top: 0;
-        }
-
-        .tool a {
-            display: inline-block;
-            margin-top: 10px;
-            padding: 8px 14px;
-            background: #2563eb;
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
-        }
-
-        .tool a:hover {
-            background: #1e4fd8;
+        h1 {
+            font-size: 36px;
+            margin: 0;
         }
 
         .lang {
-            text-align: center;
-            margin-top: 20px;
+            font-size: 14px;
         }
 
         .lang a {
-            margin: 0 10px;
+            margin-left: 10px;
             text-decoration: none;
-            color: #2563eb;
+        }
+
+        .description {
+            margin-bottom: 30px;
+            font-size: 16px;
+            color: #444;
+        }
+
+        .tools {
+            font-size: 20px;
         }
 
         footer {
-            text-align: center;
             margin-top: 60px;
+            font-size: 13px;
             color: #777;
-            font-size: 14px;
         }
     </style>
 
@@ -80,39 +57,27 @@
 <body>
 
     <header>
-        <h1>AI Tools</h1>
-        <p>Simple online tools powered by AI</p>
-    </header>
-
-    <div class="container">
+        <h1>AIツール</h1>
 
         <div class="lang">
-            <a href="/ja/">日本語</a> |
+            日本語 |
             <a href="/en/">English</a>
         </div>
+    </header>
 
-        <h2>Tools</h2>
-
-        <div class="tools">
-
-            <div class="tool">
-                <h3>Text Summarizer</h3>
-                <p>Summarize long text into a short version.</p>
-                <a href="/en/summarizer/">Open Tool</a>
-            </div>
-
-            <div class="tool">
-                <h3>文章要約ツール</h3>
-                <p>長い文章を短く要約します。</p>
-                <a href="/ja/summarizer/">ツールを開く</a>
-            </div>
-
-        </div>
-
+    <div class="description">
+        このサイトでは、個人開発によるAIツールを公開しています。
+        すべてのツールは独自に構築・運用している実験的プロジェクトです。
     </div>
 
+    <ul class="tools">
+        <li>
+            <a href="/ja/summarizer/">文章要約ツール</a>
+        </li>
+    </ul>
+
     <footer>
-        <p>© AI Tools</p>
+        © AI Tools Lab
     </footer>
 
 </body>

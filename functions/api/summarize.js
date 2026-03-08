@@ -8,7 +8,8 @@ export async function onRequest(context) {
     try {
         const body = await request.json();
 
-        // モデル名を gemini-2.5-flash に変更
+        // 最新モデル gemini-2.5-flash を指定
+        // もし404エラーが出る場合は、gemini-2.0-flash に書き換えてください
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${env.GEMINI_API_KEY}`;
 
         const response = await fetch(url, {
@@ -22,7 +23,9 @@ export async function onRequest(context) {
         const data = await response.json();
 
         if (!response.ok) {
-            return new Response(JSON.stringify({ summary: "APIエラー: " + JSON.stringify(data) }), { status: response.status });
+            // 400エラー（APIキー不正）などの詳細を画面に返す
+            const errorMsg = data.error ? data.error.message : "不明なAPIエラー";
+            return new Response(JSON.stringify({ summary: "AI通信エラー: " + errorMsg }), { status: response.status });
         }
 
         const summary = data.candidates[0].content.parts[0].text;

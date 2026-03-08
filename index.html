@@ -3,21 +3,24 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>AI一言ツール</title>
+    <title>AI要約ツール</title>
 </head>
 
 <body>
-    <h1>AIポジティブ変換</h1>
-    <input type="text" id="userInput" placeholder="何か入力してね">
-    <button onclick="transformText()">変換する</button>
-    <p id="result">ここに結果が出ます</p>
+    <h1>AI要約ツール</h1>
+    <textarea id="userInput" rows="5" cols="40" placeholder="要約したい文章を入力してください"></textarea>
+    <br>
+    <button onclick="summarizeText()">要約する</button>
+    <p><strong>要約結果:</strong></p>
+    <p id="result">ここに結果が表示されます</p>
 
     <script>
-        function transformText() {
+        function summarizeText() {
             const input = document.getElementById('userInput').value;
             const result = document.getElementById('result');
-            // 仮の動作（まずはAIなしで動くか確認）
-            result.innerText = "AIが考えています...「" + input + "」は最高ですね！";
+
+            // 今は仮の動作です。後でここにAIのAPIを接続します。
+            result.innerText = "「" + input + "」をAIが頑張って要約します（準備中...）";
         }
     </script>
 </body>

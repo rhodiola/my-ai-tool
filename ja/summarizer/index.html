@@ -33,6 +33,7 @@
             border: 1px solid #ccc;
             border-radius: 4px;
             resize: vertical;
+            box-sizing: border-box;
         }
 
         button {
@@ -86,28 +87,19 @@
         <button onclick="summarize()">要約する</button>
 
         <div class="result">
-
             <h3>要約結果</h3>
-
             <pre id="result">ここに結果が表示されます</pre>
-
         </div>
 
     </div>
 
     <script>
-
         function updateCounter() {
-
             const text = document.getElementById("input").value
-
             document.getElementById("count").textContent = text.length
-
         }
 
-
         async function summarize() {
-
             const text = document.getElementById("input").value
 
             if (!text) {
@@ -125,7 +117,6 @@
             const timestamp = Date.now()
 
             try {
-
                 const res = await fetch("/api/summarize", {
                     method: "POST",
                     headers: {
@@ -139,20 +130,21 @@
 
                 const data = await res.json()
 
+                if (!res.ok) {
+                    document.getElementById("result").textContent =
+                        data.error || data.summary || `リクエスト失敗 (${res.status})`
+                    return
+                }
+
                 if (data.summary) {
                     document.getElementById("result").textContent = data.summary
                 } else {
                     document.getElementById("result").textContent = "要約に失敗しました"
                 }
-
             } catch (e) {
-
                 document.getElementById("result").textContent = "通信エラー"
-
             }
-
         }
-
     </script>
 
 </body>

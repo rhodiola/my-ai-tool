@@ -33,6 +33,7 @@
             border: 1px solid #ccc;
             border-radius: 4px;
             resize: vertical;
+            box-sizing: border-box;
         }
 
         button {
@@ -86,27 +87,19 @@
         <button onclick="summarize()">Summarize</button>
 
         <div class="result">
-
             <h3>Summary</h3>
-
             <pre id="result">The summary will appear here.</pre>
-
         </div>
 
     </div>
 
     <script>
-
         function updateCounter() {
-
             const text = document.getElementById("input").value
-
             document.getElementById("count").textContent = text.length
-
         }
 
         async function summarize() {
-
             const text = document.getElementById("input").value
 
             if (!text) {
@@ -124,7 +117,6 @@
             const timestamp = Date.now()
 
             try {
-
                 const res = await fetch("/api/summarize", {
                     method: "POST",
                     headers: {
@@ -138,20 +130,21 @@
 
                 const data = await res.json()
 
+                if (!res.ok) {
+                    document.getElementById("result").textContent =
+                        data.error || data.summary || `Request failed (${res.status})`
+                    return
+                }
+
                 if (data.summary) {
                     document.getElementById("result").textContent = data.summary
                 } else {
                     document.getElementById("result").textContent = "Failed to summarize."
                 }
-
             } catch (e) {
-
                 document.getElementById("result").textContent = "Connection error."
-
             }
-
         }
-
     </script>
 
 </body>

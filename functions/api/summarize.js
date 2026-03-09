@@ -87,9 +87,11 @@ export async function onRequestPost(context) {
     --------------------------- */
 
     const prompt =
-        `Please summarize the following text clearly and concisely:
+        `Summarize the following text in the same language as the input.
+         If the text is Japanese, respond in Japanese.
+         If the text is English, respond in English.
+         ${text}`
 
-${text}`
 
     const geminiResponse = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${env.GEMINI_API_KEY}`,

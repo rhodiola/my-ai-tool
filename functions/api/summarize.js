@@ -87,10 +87,9 @@ export async function onRequestPost(context) {
     --------------------------- */
 
     const prompt =
-        `Summarize the following text in the same language as the input.
-         If the text is Japanese, respond in Japanese.
-         If the text is English, respond in English.
-         ${text}`
+        `Summarize the following text in one sentence.
+         Use the same language as the input.
+     ${text}`
 
 
     const geminiResponse = await fetch(

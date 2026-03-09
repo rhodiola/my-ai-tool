@@ -98,8 +98,11 @@
     <script>
 
         function updateCounter() {
+
             const text = document.getElementById("input").value
+
             document.getElementById("count").textContent = text.length
+
         }
 
         async function summarize() {
@@ -111,24 +114,42 @@
                 return
             }
 
-            if (text.length > 2000) {
-                alert("Maximum 2000 characters allowed.")
+            if (text.length > 300) {
+                alert("Maximum 300 characters allowed.")
                 return
             }
 
             document.getElementById("result").textContent = "Processing..."
 
-            const res = await fetch("/api/summarize", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ text })
-            })
+            const timestamp = Date.now()
 
-            const data = await res.json()
+            try {
 
-            document.getElementById("result").textContent = data.summary
+                const res = await fetch("/api/summarize", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        timestamp: timestamp
+                    })
+                })
+
+                const data = await res.json()
+
+                if (data.summary) {
+                    document.getElementById("result").textContent = data.summary
+                } else {
+                    document.getElementById("result").textContent = "Failed to summarize."
+                }
+
+            } catch (e) {
+
+                document.getElementById("result").textContent = "Connection error."
+
+            }
+
         }
 
     </script>

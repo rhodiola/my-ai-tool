@@ -100,9 +100,11 @@
         function updateCounter() {
 
             const text = document.getElementById("input").value
+
             document.getElementById("count").textContent = text.length
 
         }
+
 
         async function summarize() {
 
@@ -120,17 +122,35 @@
 
             document.getElementById("result").textContent = "処理中..."
 
-            const res = await fetch("/api/summarize", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ text })
-            })
+            const timestamp = Date.now()
 
-            const data = await res.json()
+            try {
 
-            document.getElementById("result").textContent = data.summary
+                const res = await fetch("/api/summarize", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        timestamp: timestamp
+                    })
+                })
+
+                const data = await res.json()
+
+                if (data.summary) {
+                    document.getElementById("result").textContent = data.summary
+                } else {
+                    document.getElementById("result").textContent = "要約に失敗しました"
+                }
+
+            } catch (e) {
+
+                document.getElementById("result").textContent = "通信エラー"
+
+            }
+
         }
 
     </script>

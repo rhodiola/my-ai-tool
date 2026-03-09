@@ -141,26 +141,39 @@
     </div>
 
     <script>
+        let baseCSV = ""
+        let convertCSV = ""
 
-        let baseCSV = null
-        let convertCSV = null
+        let baseLoaded = false
+        let convertLoaded = false
 
         const runBtn = document.getElementById("runBtn")
 
-        function readFile(file, callback) {
+        async function readFile(file, callback) {
+            try {
+                const buffer = await file.arrayBuffer()
+                let text = ""
 
-            const reader = new FileReader()
+                try {
+                    const decoder = new TextDecoder("utf-8", { fatal: true })
+                    text = decoder.decode(buffer)
+                } catch {
+                    const decoder = new TextDecoder("shift-jis")
+                    text = decoder.decode(buffer)
+                }
 
-            reader.onload = e => {
-                callback(e.target.result, file.name)
+                callback(text, file.name)
+            } catch (error) {
+                alert("ファイルの読み込みに失敗しました: " + file.name)
+                console.error(error)
             }
+        }
 
-            reader.readAsText(file)
-
+        function updateRunButton() {
+            runBtn.disabled = !(baseLoaded && convertLoaded)
         }
 
         function setupArea(dropId, fileId, callback) {
-
             const drop = document.getElementById(dropId)
             const fileInput = document.getElementById(fileId)
 
@@ -168,55 +181,48 @@
                 fileInput.click()
             })
 
-            fileInput.addEventListener("change", () => {
+            fileInput.addEventListener("change", async () => {
                 const file = fileInput.files[0]
-                if (file) readFile(file, callback)
+                if (file) {
+                    await readFile(file, callback)
+                }
             })
 
             drop.addEventListener("dragover", e => {
                 e.preventDefault()
             })
 
-            drop.addEventListener("drop", e => {
+            drop.addEventListener("drop", async e => {
                 e.preventDefault()
                 const file = e.dataTransfer.files[0]
-                if (file) readFile(file, callback)
+                if (file) {
+                    await readFile(file, callback)
+                }
             })
-
         }
 
-        setupArea(
-            "baseDrop",
-            "baseFile",
-            (data, name) => {
-                baseCSV = data
-                document.getElementById("baseStatus").innerText = "読み込み: " + name
-                checkReady()
-            })
-
-        setupArea(
-            "convertDrop",
-            "convertFile",
-            (data, name) => {
-                convertCSV = data
-                document.getElementById("convertStatus").innerText = "読み込み: " + name
-                checkReady()
-            })
-
-        function checkReady() {
-            if (baseCSV && convertCSV) {
-                runBtn.disabled = false
-            }
-        }
-
-        runBtn.addEventListener("click", () => {
-
-            const comment = document.getElementById("userComment").value
-
-            alert("Gemini送信準備\nコメント: " + comment)
-
+        setupArea("baseDrop", "baseFile", (data, name) => {
+            baseCSV = data
+            baseLoaded = true
+            document.getElementById("baseStatus").innerText = "Loaded: " + name
+            updateRunButton()
+            console.log("base loaded", name, baseCSV.length)
         })
 
+        setupArea("convertDrop", "convertFile", (data, name) => {
+            convertCSV = data
+            convertLoaded = true
+            document.getElementById("convertStatus").innerText = "Loaded: " + name
+            updateRunButton()
+            console.log("convert loaded", name, convertCSV.length)
+        })
+
+        runBtn.addEventListener("click", () => {
+            const comment = document.getElementById("userComment").value
+            alert("Preparing Gemini request\nComment: " + comment)
+        })
+
+        updateRunButton()
     </script>
 
 </body>

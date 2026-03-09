@@ -107,7 +107,7 @@ ${text}`
                     }
                 ],
                 generationConfig: {
-                    maxOutputTokens: 200
+                    maxOutputTokens: 512
                 }
             })
         }

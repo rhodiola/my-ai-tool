@@ -217,9 +217,51 @@
             console.log("convert loaded", name, convertCSV.length)
         })
 
-        runBtn.addEventListener("click", () => {
+        runBtn.addEventListener("click", async () => {
+
             const comment = document.getElementById("userComment").value
-            alert("Preparing Gemini request\nComment: " + comment)
+
+            const baseRows = baseCSV.split("\n").map(r => r.split(","))
+            const convertRows = convertCSV.split("\n").map(r => r.split(","))
+
+            const baseHeader = baseRows[0]
+            const baseSample = baseRows.slice(1, 4)
+
+            const convertHeader = convertRows[0]
+            const convertSample = convertRows.slice(1, 4)
+            const convertAll = convertRows.slice(1)
+
+            const res = await fetch("/api/aicsv-convert", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    baseHeader,
+                    baseSample,
+                    convertHeader,
+                    convertSample,
+                    convertRows: convertAll,
+                    comment,
+                    timestamp: Date.now()
+                })
+            })
+
+            const data = await res.json()
+
+            if (!res.ok) {
+                alert("Error: " + data.error)
+                return
+            }
+
+            const blob = new Blob([data.csv], { type: "text/csv" })
+            const url = URL.createObjectURL(blob)
+
+            const a = document.createElement("a")
+            a.href = url
+            a.download = "converted.csv"
+            a.click()
+
         })
 
         updateRunButton()

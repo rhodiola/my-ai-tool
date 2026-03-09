@@ -31,8 +31,7 @@ export async function onRequestPost(context) {
 
     const origin = request.headers.get("origin")
     const allowedOrigins = [
-        "https://ai-sumco.com",
-        "https://www.ai-sumco.com"
+        "https://ai.npaso.com",
     ]
 
     if (origin && !allowedOrigins.includes(origin)) {

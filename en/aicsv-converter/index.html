@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>AICSV Converter</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f3f4f6;
+            font-size: 18px;
+        }
+
+        .wrapper {
+            max-width: 950px;
+            margin: 80px auto;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 40px;
+            margin-bottom: 12px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 18px;
+        }
+
+        .drop-area-container {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+        }
+
+        .drop-area {
+            width: 400px;
+            height: 230px;
+            border: 2px dashed #bbb;
+            border-radius: 10px;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .drop-title {
+            font-weight: bold;
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .drop-desc {
+            font-size: 15px;
+            color: #777;
+        }
+
+        .status {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #444;
+        }
+
+        .comment-box {
+            margin-top: 35px;
+        }
+
+        .comment-box textarea {
+            width: 600px;
+            height: 60px;
+            font-size: 16px;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            margin-top: 35px;
+            padding: 14px 32px;
+            font-size: 18px;
+            border: none;
+            border-radius: 6px;
+            background: #2563eb;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            background: #aaa;
+            cursor: default;
+        }
+
+        input[type=file] {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="wrapper">
+
+        <h1>AICSV Converter</h1>
+
+        <div class="subtitle">
+            AI analyzes the CSV structure and converts the data.
+        </div>
+
+        <div class="drop-area-container">
+
+            <div id="baseDrop" class="drop-area">
+                <div class="drop-title">Base CSV</div>
+                <div class="drop-desc">Drop file or click to select</div>
+                <div class="status" id="baseStatus">Not loaded</div>
+                <input type="file" id="baseFile" accept=".csv">
+            </div>
+
+            <div id="convertDrop" class="drop-area">
+                <div class="drop-title">Source CSV</div>
+                <div class="drop-desc">Drop file or click to select</div>
+                <div class="status" id="convertStatus">Not loaded</div>
+                <input type="file" id="convertFile" accept=".csv">
+            </div>
+
+        </div>
+
+        <div class="comment-box">
+            <div style="margin-bottom:8px;">Comment for AI (optional)</div>
+            <textarea id="userComment" placeholder="Example: Column A is product ID, column B is price"></textarea>
+        </div>
+
+        <button id="runBtn" disabled>
+            Generate Converted CSV
+        </button>
+
+    </div>
+
+    <script>
+
+        let baseCSV = null
+        let convertCSV = null
+
+        const runBtn = document.getElementById("runBtn")
+
+        function readFile(file, callback) {
+
+            const reader = new FileReader()
+
+            reader.onload = e => {
+                callback(e.target.result, file.name)
+            }
+
+            reader.readAsText(file)
+
+        }
+
+        function setupArea(dropId, fileId, callback) {
+
+            const drop = document.getElementById(dropId)
+            const fileInput = document.getElementById(fileId)
+
+            drop.addEventListener("click", () => {
+                fileInput.click()
+            })
+
+            fileInput.addEventListener("change", () => {
+                const file = fileInput.files[0]
+                if (file) readFile(file, callback)
+            })
+
+            drop.addEventListener("dragover", e => {
+                e.preventDefault()
+            })
+
+            drop.addEventListener("drop", e => {
+                e.preventDefault()
+                const file = e.dataTransfer.files[0]
+                if (file) readFile(file, callback)
+            })
+
+        }
+
+        setupArea(
+            "baseDrop",
+            "baseFile",
+            (data, name) => {
+                baseCSV = data
+                document.getElementById("baseStatus").innerText = "Loaded: " + name
+                checkReady()
+            })
+
+        setupArea(
+            "convertDrop",
+            "convertFile",
+            (data, name) => {
+                convertCSV = data
+                document.getElementById("convertStatus").innerText = "Loaded: " + name
+                checkReady()
+            })
+
+        function checkReady() {
+            if (baseCSV && convertCSV) {
+                runBtn.disabled = false
+            }
+        }
+
+        runBtn.addEventListener("click", () => {
+
+            const comment = document.getElementById("userComment").value
+
+            alert("Preparing Gemini request\nComment: " + comment)
+
+        })
+
+    </script>
+
+</body>
+
+</html>

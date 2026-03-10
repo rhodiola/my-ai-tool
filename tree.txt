@@ -1,0 +1,30 @@
+﻿
+ai-tools-site
+│
+│  index.html
+│  temp.html
+│  text.txt
+│  
+├─en
+│  │  index.html
+│  │  
+│  ├─aicsv-converter
+│  │      index.html
+│  │      
+│  └─summarizer
+│          index.html
+│          
+├─functions
+│  └─api
+│          aicsv-convert.js
+│          summarize.js
+│          
+└─ja
+    │  index.html
+    │  
+    ├─aicsv-converter
+    │      index.html
+    │      
+    └─summarizer
+            index.html
+            

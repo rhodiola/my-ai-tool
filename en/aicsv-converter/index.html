@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>AICSV Converter</title>
+    <title>AI CSV Converter</title>
 
     <style>
         body {
@@ -66,6 +66,17 @@
             color: #444;
         }
 
+        .clear-btn {
+            margin-left: 8px;
+            font-size: 13px;
+            color: #2563eb;
+            cursor: pointer;
+        }
+
+        .clear-btn:hover {
+            text-decoration: underline;
+        }
+
         .comment-box {
             margin-top: 35px;
         }
@@ -95,6 +106,13 @@
             cursor: default;
         }
 
+        .note {
+            margin-top: 40px;
+            font-size: 14px;
+            color: #666;
+            line-height: 1.6;
+        }
+
         input[type=file] {
             display: none;
         }
@@ -105,25 +123,37 @@
 
     <div class="wrapper">
 
-        <h1>AICSV Converter</h1>
+        <h1>AI CSV Converter</h1>
 
         <div class="subtitle">
-            AI analyzes the CSV structure and converts the data.
+            AI analyzes the files and rearranges the data to match the structure of the target CSV.<br>
+            Simply drop two files and click the button.
         </div>
 
         <div class="drop-area-container">
 
             <div id="baseDrop" class="drop-area">
-                <div class="drop-title">Base CSV</div>
+                <div class="drop-title">Target CSV</div>
                 <div class="drop-desc">Drop file or click to select</div>
-                <div class="status" id="baseStatus">Not loaded</div>
+
+                <div class="status">
+                    <span id="baseStatus">Not loaded</span>
+                    <span class="clear-btn" id="clearBase">Clear</span>
+                </div>
+
                 <input type="file" id="baseFile" accept=".csv">
             </div>
+
 
             <div id="convertDrop" class="drop-area">
                 <div class="drop-title">Source CSV</div>
                 <div class="drop-desc">Drop file or click to select</div>
-                <div class="status" id="convertStatus">Not loaded</div>
+
+                <div class="status">
+                    <span id="convertStatus">Not loaded</span>
+                    <span class="clear-btn" id="clearConvert">Clear</span>
+                </div>
+
                 <input type="file" id="convertFile" accept=".csv">
             </div>
 
@@ -131,33 +161,115 @@
 
         <div class="comment-box">
             <div style="margin-bottom:8px;">Comment for AI (optional)</div>
-            <textarea id="userComment" placeholder="Example: Column A is product ID, column B is price"></textarea>
+            <textarea id="userComment"
+                placeholder="Additional explanation for column meaning. Example: sku_code = product ID (optional)"></textarea>
         </div>
 
         <button id="runBtn" disabled>
             Generate Converted CSV
         </button>
 
+        <div class="note">
+            ※The output CSV is generated in <b>UTF-8 with BOM</b> format and can be opened in standard editors such as
+            Notepad or Excel.<br>
+            ※Since this conversion is performed automatically by AI, the result may not always be perfect. Please review
+            the generated data before use.<br>
+            The site owner is not responsible for any damages resulting from the use of this tool.
+        </div>
+
     </div>
 
     <script>
 
-        let baseCSV = null
-        let convertCSV = null
+        let baseCSV = ""
+        let convertCSV = ""
+
+        let baseLoaded = false
+        let convertLoaded = false
 
         const runBtn = document.getElementById("runBtn")
 
-        function readFile(file, callback) {
 
-            const reader = new FileReader()
+        function parseLines(text) {
+            return text
+                .replace(/\r\n/g, "\n")
+                .replace(/\r/g, "\n")
+                .split("\n")
+                .filter(line => line.trim() !== "")
+        }
 
-            reader.onload = e => {
-                callback(e.target.result, file.name)
+
+        function splitCSVRow(row) {
+
+            const result = []
+            let current = ""
+            let inQuotes = false
+
+            for (let i = 0; i < row.length; i++) {
+
+                const char = row[i]
+
+                if (char === '"') {
+
+                    if (inQuotes && row[i + 1] === '"') {
+                        current += '"'
+                        i++
+                    } else {
+                        inQuotes = !inQuotes
+                    }
+
+                } else if (char === ',' && !inQuotes) {
+
+                    result.push(current)
+                    current = ""
+
+                } else {
+
+                    current += char
+
+                }
             }
 
-            reader.readAsText(file)
+            result.push(current)
 
+            return result
         }
+
+
+        async function readFile(file, callback) {
+
+            try {
+
+                const buffer = await file.arrayBuffer()
+                let text = ""
+
+                try {
+
+                    const decoder = new TextDecoder("utf-8", { fatal: true })
+                    text = decoder.decode(buffer)
+
+                } catch {
+
+                    const decoder = new TextDecoder("shift-jis")
+                    text = decoder.decode(buffer)
+
+                }
+
+                callback(text, file.name)
+
+            } catch (error) {
+
+                alert("Failed to read file: " + file.name)
+                console.error(error)
+
+            }
+        }
+
+
+        function updateRunButton() {
+            runBtn.disabled = !(baseLoaded && convertLoaded)
+        }
+
 
         function setupArea(dropId, fileId, callback) {
 
@@ -168,54 +280,158 @@
                 fileInput.click()
             })
 
-            fileInput.addEventListener("change", () => {
+            fileInput.addEventListener("change", async () => {
+
                 const file = fileInput.files[0]
-                if (file) readFile(file, callback)
+
+                if (file) {
+                    await readFile(file, callback)
+                }
+
             })
 
             drop.addEventListener("dragover", e => {
                 e.preventDefault()
             })
 
-            drop.addEventListener("drop", e => {
+            drop.addEventListener("drop", async e => {
+
                 e.preventDefault()
+
                 const file = e.dataTransfer.files[0]
-                if (file) readFile(file, callback)
+
+                if (file) {
+                    await readFile(file, callback)
+                }
+
             })
 
         }
 
-        setupArea(
-            "baseDrop",
-            "baseFile",
-            (data, name) => {
-                baseCSV = data
-                document.getElementById("baseStatus").innerText = "Loaded: " + name
-                checkReady()
-            })
 
-        setupArea(
-            "convertDrop",
-            "convertFile",
-            (data, name) => {
-                convertCSV = data
-                document.getElementById("convertStatus").innerText = "Loaded: " + name
-                checkReady()
-            })
+        setupArea("baseDrop", "baseFile", (data, name) => {
 
-        function checkReady() {
-            if (baseCSV && convertCSV) {
-                runBtn.disabled = false
-            }
+            baseCSV = data
+            baseLoaded = true
+
+            document.getElementById("baseStatus").innerText = "Loaded: " + name
+
+            updateRunButton()
+
+        })
+
+
+        setupArea("convertDrop", "convertFile", (data, name) => {
+
+            convertCSV = data
+            convertLoaded = true
+
+            document.getElementById("convertStatus").innerText = "Loaded: " + name
+
+            updateRunButton()
+
+        })
+
+
+        document.getElementById("clearBase").onclick = (e) => {
+
+            e.stopPropagation()
+
+            baseCSV = ""
+            baseLoaded = false
+
+            document.getElementById("baseFile").value = ""
+            document.getElementById("baseStatus").innerText = "Not loaded"
+
+            updateRunButton()
+
         }
 
-        runBtn.addEventListener("click", () => {
+        document.getElementById("clearConvert").onclick = (e) => {
+
+            e.stopPropagation()
+
+            convertCSV = ""
+            convertLoaded = false
+
+            document.getElementById("convertFile").value = ""
+            document.getElementById("convertStatus").innerText = "Not loaded"
+
+            updateRunButton()
+
+        }
+
+
+        runBtn.addEventListener("click", async () => {
+
+            runBtn.disabled = true
+            runBtn.textContent = "Processing..."
 
             const comment = document.getElementById("userComment").value
 
-            alert("Preparing Gemini request\nComment: " + comment)
+            const baseRows = parseLines(baseCSV).map(r => splitCSVRow(r))
+            const convertRows = parseLines(convertCSV).map(r => splitCSVRow(r))
+
+            const baseHeader = baseRows[0]
+            const baseSample = baseRows.slice(1, 4)
+
+            const convertHeader = convertRows[0]
+            const convertSample = convertRows.slice(1, 4)
+
+            const convertAll = convertRows.slice(1)
+
+            try {
+
+                const res = await fetch("/api/aicsv-convert", {
+
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify({
+
+                        baseHeader,
+                        baseSample,
+                        convertHeader,
+                        convertSample,
+                        convertRows: convertAll,
+                        comment,
+                        timestamp: Date.now()
+
+                    })
+
+                })
+
+                const data = await res.json()
+
+                if (!res.ok) {
+
+                    alert("Error: " + data.error)
+                    return
+
+                }
+
+                const blob = new Blob(["\uFEFF" + data.csv], { type: "text/csv;charset=utf-8" })
+                const url = URL.createObjectURL(blob)
+
+                const a = document.createElement("a")
+                a.href = url
+                a.download = "converted.csv"
+                a.click()
+
+            }
+            finally {
+
+                runBtn.disabled = false
+                runBtn.textContent = "Generate Converted CSV"
+
+            }
 
         })
+
+        updateRunButton()
 
     </script>
 

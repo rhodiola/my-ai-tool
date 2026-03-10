@@ -135,7 +135,29 @@ export async function onRequestPost(context) {
     --------------------------- */
 
     const prompt = `
-You analyze CSV structures.
+You map source CSV columns to base CSV columns.
+
+Task:
+- Analyze the base CSV header and sample rows.
+- Analyze the source CSV header and sample rows.
+- Find the best matching source column for EACH base column.
+- Use semantic meaning, column names, and sample values.
+- Use the user note only as an additional hint about column meaning.
+
+Important rules:
+- Return mapping for EVERY base column.
+- The key of mapping must be each base CSV column name exactly as written.
+- The value of mapping must be a source CSV column name that exists in the source header exactly as written.
+- Do not create new column names.
+- Do not translate or rewrite column names.
+- Do not explain anything.
+- Return ONLY valid JSON.
+- Output format must be exactly:
+{
+  "mapping": {
+    "base_column_name": "source_column_name"
+  }
+}
 
 Base CSV header:
 ${JSON.stringify(baseHeader)}
@@ -150,16 +172,7 @@ Source CSV sample rows:
 ${JSON.stringify(convertSample)}
 
 User note:
-${comment}
-
-Return ONLY JSON.
-
-Example:
-{
- "mapping": {
-   "base_column": "source_column"
- }
-}
+${comment || "(none)"}
 `
 
 
@@ -272,6 +285,7 @@ Example:
 
     }
 
+
     function escapeCSV(value) {
 
         if (value === null || value === undefined) return ""
@@ -288,6 +302,7 @@ Example:
 
         return str
     }
+
 
     /* ---------------------------
        CSV生成

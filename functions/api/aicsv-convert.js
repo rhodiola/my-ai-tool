@@ -337,7 +337,10 @@ Example:
             const newRow = indexMap.map(i => {
 
                 if (i === -1) return ""
-                return row[i] || ""
+
+                const value = row[i] || ""
+
+                return normalizeDateTime(value)
 
             })
 
@@ -371,6 +374,67 @@ Example:
             rows: result.length - 1,
             csv
         })
+
+    }
+
+    function normalizeDateTime(value) {
+
+        if (!value) return value
+
+        let v = String(value).trim()
+
+        /* 日本語形式 → 標準化 */
+
+        v = v
+            .replace(/年/g, "-")
+            .replace(/月/g, "-")
+            .replace(/日/g, "")
+            .replace(/時/g, ":")
+            .replace(/分/g, ":")
+            .replace(/秒/g, "")
+
+        /* ISO T をスペースへ */
+
+        v = v.replace("T", " ")
+
+        /* 時刻のみ */
+
+        if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(v)) {
+
+            const parts = v.split(":")
+            const h = parts[0].padStart(2, "0")
+            const m = parts[1].padStart(2, "0")
+            const s = (parts[2] || "00").padStart(2, "0")
+
+            return `${h}:${m}:${s}`
+
+        }
+
+        /* Date parse */
+
+        const d = new Date(v)
+
+        if (isNaN(d.getTime())) {
+            return value
+        }
+
+        const Y = d.getFullYear()
+        const M = String(d.getMonth() + 1).padStart(2, "0")
+        const D = String(d.getDate()).padStart(2, "0")
+
+        const h = String(d.getHours()).padStart(2, "0")
+        const m = String(d.getMinutes()).padStart(2, "0")
+        const s = String(d.getSeconds()).padStart(2, "0")
+
+        /* datetime */
+
+        if (v.includes(":")) {
+            return `${Y}-${M}-${D} ${h}:${m}:${s}`
+        }
+
+        /* date */
+
+        return `${Y}-${M}-${D}`
 
     }
 

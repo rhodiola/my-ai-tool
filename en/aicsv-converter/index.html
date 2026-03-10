@@ -13,6 +13,24 @@
             font-size: 18px;
         }
 
+        /* top link */
+
+        .top-link {
+            position: absolute;
+            top: 20px;
+            left: 30px;
+            font-size: 15px;
+        }
+
+        .top-link a {
+            color: #2563eb;
+            text-decoration: none;
+        }
+
+        .top-link a:hover {
+            text-decoration: underline;
+        }
+
         .wrapper {
             max-width: 950px;
             margin: 80px auto;
@@ -121,6 +139,10 @@
 
 <body>
 
+    <div class="top-link">
+        <a href="/en/">← Back to Home</a>
+    </div>
+
     <div class="wrapper">
 
         <h1>AI CSV Converter</h1>
@@ -133,6 +155,7 @@
         <div class="drop-area-container">
 
             <div id="baseDrop" class="drop-area">
+
                 <div class="drop-title">Target CSV</div>
                 <div class="drop-desc">Drop file or click to select</div>
 
@@ -142,10 +165,11 @@
                 </div>
 
                 <input type="file" id="baseFile" accept=".csv">
+
             </div>
 
-
             <div id="convertDrop" class="drop-area">
+
                 <div class="drop-title">Source CSV</div>
                 <div class="drop-desc">Drop file or click to select</div>
 
@@ -155,14 +179,18 @@
                 </div>
 
                 <input type="file" id="convertFile" accept=".csv">
+
             </div>
 
         </div>
 
         <div class="comment-box">
+
             <div style="margin-bottom:8px;">Comment for AI (optional)</div>
+
             <textarea id="userComment"
-                placeholder="Additional explanation for column meaning. Example: sku_code = product ID (optional)"></textarea>
+                placeholder="Additional explanation for column meaning. Example: sku_code = product ID"></textarea>
+
         </div>
 
         <button id="runBtn" disabled>
@@ -170,8 +198,8 @@
         </button>
 
         <div class="note">
-            ※The output CSV is generated in <b>UTF-8 with BOM</b> format and can be opened in standard editors such as
-            Notepad or Excel.<br>
+            ※The output CSV is generated in <b>UTF-8 with BOM</b> format and can be opened in editors such as Notepad or
+            Excel.<br>
             ※Since this conversion is performed automatically by AI, the result may not always be perfect. Please review
             the generated data before use.<br>
             The site owner is not responsible for any damages resulting from the use of this tool.
@@ -189,7 +217,6 @@
 
         const runBtn = document.getElementById("runBtn")
 
-
         function parseLines(text) {
             return text
                 .replace(/\r\n/g, "\n")
@@ -197,7 +224,6 @@
                 .split("\n")
                 .filter(line => line.trim() !== "")
         }
-
 
         function splitCSVRow(row) {
 
@@ -228,13 +254,13 @@
                     current += char
 
                 }
+
             }
 
             result.push(current)
 
             return result
         }
-
 
         async function readFile(file, callback) {
 
@@ -263,13 +289,12 @@
                 console.error(error)
 
             }
-        }
 
+        }
 
         function updateRunButton() {
             runBtn.disabled = !(baseLoaded && convertLoaded)
         }
-
 
         function setupArea(dropId, fileId, callback) {
 
@@ -308,7 +333,6 @@
 
         }
 
-
         setupArea("baseDrop", "baseFile", (data, name) => {
 
             baseCSV = data
@@ -320,7 +344,6 @@
 
         })
 
-
         setupArea("convertDrop", "convertFile", (data, name) => {
 
             convertCSV = data
@@ -331,7 +354,6 @@
             updateRunButton()
 
         })
-
 
         document.getElementById("clearBase").onclick = (e) => {
 
@@ -360,7 +382,6 @@
             updateRunButton()
 
         }
-
 
         runBtn.addEventListener("click", async () => {
 

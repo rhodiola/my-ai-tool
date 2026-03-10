@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
@@ -11,6 +11,24 @@
             font-family: Arial, Helvetica, sans-serif;
             background: #f3f4f6;
             font-size: 18px;
+        }
+
+        /* Top link */
+
+        .top-link {
+            position: absolute;
+            top: 20px;
+            left: 30px;
+            font-size: 15px;
+        }
+
+        .top-link a {
+            color: #2563eb;
+            text-decoration: none;
+        }
+
+        .top-link a:hover {
+            text-decoration: underline;
         }
 
         .wrapper {
@@ -66,7 +84,6 @@
             color: #444;
         }
 
-        /* ▼ 控えめな解除ボタン */
         .clear-btn {
             margin-left: 8px;
             font-size: 13px;
@@ -122,60 +139,78 @@
 
 <body>
 
+    <div class="top-link">
+        <a href="/">← Back to Home</a>
+    </div>
+
     <div class="wrapper">
 
         <h1>AI CSV Converter</h1>
 
         <div class="subtitle">
-            AIがファイルを解析し、完成形CSVと同じフォーマットに整形しデータを並べ替えます。<br>
-            ファイルを２つドロップしてクリックするだけです。
+            AI analyzes the files and rearranges the data to match the structure of the target CSV.<br>
+            Simply drop two files and click the button.
         </div>
 
         <div class="drop-area-container">
 
             <div id="baseDrop" class="drop-area">
-                <div class="drop-title">完成形CSV</div>
-                <div class="drop-desc">ドロップ または クリックして選択</div>
+
+                <div class="drop-title">Target CSV</div>
+                <div class="drop-desc">Drop file or click to select</div>
 
                 <div class="status">
-                    <span id="baseStatus">未読み込み</span>
-                    <span class="clear-btn" id="clearBase">解除</span>
+                    <span id="baseStatus">Not loaded</span>
+                    <span class="clear-btn" id="clearBase">Clear</span>
                 </div>
 
                 <input type="file" id="baseFile" accept=".csv">
+
             </div>
 
 
             <div id="convertDrop" class="drop-area">
-                <div class="drop-title">変換用CSV</div>
-                <div class="drop-desc">ドロップ または クリックして選択</div>
+
+                <div class="drop-title">Source CSV</div>
+                <div class="drop-desc">Drop file or click to select</div>
 
                 <div class="status">
-                    <span id="convertStatus">未読み込み</span>
-                    <span class="clear-btn" id="clearConvert">解除</span>
+                    <span id="convertStatus">Not loaded</span>
+                    <span class="clear-btn" id="clearConvert">Clear</span>
                 </div>
 
                 <input type="file" id="convertFile" accept=".csv">
+
             </div>
 
         </div>
 
+
         <div class="comment-box">
-            <div style="margin-bottom:8px;">AIへ伝えるコメント（任意）</div>
-            <textarea id="userComment" placeholder="列の意味をAIに伝える補足　例：sku_code は 商品番号（任意）"></textarea>
+
+            <div style="margin-bottom:8px;">Comment for AI (optional)</div>
+
+            <textarea id="userComment"
+                placeholder="Additional explanation for column meaning. Example: sku_code = product ID"></textarea>
+
         </div>
 
+
         <button id="runBtn" disabled>
-            AI変換CSVを生成
+            Generate Converted CSV
         </button>
 
+
         <div class="note">
-            ※出力CSVは <b>UTF-8（BOM付き）</b> 形式で作成され、通常のメモ帳やExcelで開くことができます。<br>
-            ※AIによる自動変換のため、結果が完全でない場合があります。出力されたデータは必ず内容をご確認のうえご利用ください。<br>
-            本ツールの利用によって生じたいかなる損害についても、当サイトは責任を負いません。
+            ※The output CSV is generated in <b>UTF-8 with BOM</b> format and can be opened in editors such as Notepad or
+            Excel.<br>
+            ※Since this conversion is performed automatically by AI, the result may not always be perfect. Please review
+            the generated data before use.<br>
+            The site owner is not responsible for any damages resulting from the use of this tool.
         </div>
 
     </div>
+
 
     <script>
 
@@ -187,7 +222,6 @@
 
         const runBtn = document.getElementById("runBtn")
 
-
         function parseLines(text) {
             return text
                 .replace(/\r\n/g, "\n")
@@ -195,7 +229,6 @@
                 .split("\n")
                 .filter(line => line.trim() !== "")
         }
-
 
         function splitCSVRow(row) {
 
@@ -226,13 +259,13 @@
                     current += char
 
                 }
+
             }
 
             result.push(current)
 
             return result
         }
-
 
         async function readFile(file, callback) {
 
@@ -257,17 +290,16 @@
 
             } catch (error) {
 
-                alert("ファイルの読み込みに失敗しました: " + file.name)
+                alert("Failed to read file: " + file.name)
                 console.error(error)
 
             }
-        }
 
+        }
 
         function updateRunButton() {
             runBtn.disabled = !(baseLoaded && convertLoaded)
         }
-
 
         function setupArea(dropId, fileId, callback) {
 
@@ -306,7 +338,6 @@
 
         }
 
-
         setupArea("baseDrop", "baseFile", (data, name) => {
 
             baseCSV = data
@@ -317,7 +348,6 @@
             updateRunButton()
 
         })
-
 
         setupArea("convertDrop", "convertFile", (data, name) => {
 
@@ -330,9 +360,6 @@
 
         })
 
-
-        /* ▼ ファイル解除 */
-
         document.getElementById("clearBase").onclick = (e) => {
 
             e.stopPropagation()
@@ -341,7 +368,7 @@
             baseLoaded = false
 
             document.getElementById("baseFile").value = ""
-            document.getElementById("baseStatus").innerText = "未読み込み"
+            document.getElementById("baseStatus").innerText = "Not loaded"
 
             updateRunButton()
 
@@ -355,19 +382,16 @@
             convertLoaded = false
 
             document.getElementById("convertFile").value = ""
-            document.getElementById("convertStatus").innerText = "未読み込み"
+            document.getElementById("convertStatus").innerText = "Not loaded"
 
             updateRunButton()
 
         }
 
-
-        /* ▼ 実行 */
-
         runBtn.addEventListener("click", async () => {
 
             runBtn.disabled = true
-            runBtn.textContent = "処理中..."
+            runBtn.textContent = "Processing..."
 
             const comment = document.getElementById("userComment").value
 
@@ -427,12 +451,11 @@
             finally {
 
                 runBtn.disabled = false
-                runBtn.textContent = "AI変換CSVを生成"
+                runBtn.textContent = "Generate Converted CSV"
 
             }
 
         })
-
 
         updateRunButton()
 

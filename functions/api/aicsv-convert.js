@@ -2,6 +2,7 @@ export async function onRequestPost(context) {
 
     const request = context.request
     const env = context.env
+    const cache = caches.default
 
 
     /* ---------------------------
@@ -164,6 +165,64 @@ Example:
 
 
     /* ---------------------------
+       キャッシュキー生成
+    --------------------------- */
+
+    const hashSource = JSON.stringify({
+        baseHeader,
+        baseSample,
+        convertHeader,
+        convertSample,
+        comment
+    })
+
+    const encoder = new TextEncoder()
+    const data = encoder.encode(hashSource)
+
+    const digest = await crypto.subtle.digest("SHA-256", data)
+    const hashArray = Array.from(new Uint8Array(digest))
+    const cacheKey = hashArray.map(b => b.toString(16).padStart(2, "0")).join("")
+
+
+
+    /* ---------------------------
+       Workers Cache
+    --------------------------- */
+
+    const cacheRequest = new Request("https://cache/" + cacheKey)
+
+    let cacheResponse = await cache.match(cacheRequest)
+
+    if (cacheResponse) {
+
+        const mapping = await cacheResponse.json()
+
+        return processCSV(mapping)
+
+    }
+
+
+    /* ---------------------------
+       KV Cache
+    --------------------------- */
+
+    let kv = await env.AI_CACHE.get(cacheKey)
+
+    if (kv) {
+
+        const mapping = JSON.parse(kv)
+
+        await cache.put(
+            cacheRequest,
+            new Response(JSON.stringify(mapping))
+        )
+
+        return processCSV(mapping)
+
+    }
+
+
+    /* ---------------------------
        Gemini API
     --------------------------- */
 
@@ -191,10 +250,10 @@ Example:
     )
 
 
-    let data
+    let dataRes
 
     try {
-        data = await geminiResponse.json()
+        dataRes = await geminiResponse.json()
     } catch {
         return Response.json(
             { error: "invalid Gemini response" },
@@ -204,18 +263,13 @@ Example:
 
     if (!geminiResponse.ok) {
         return Response.json(
-            { error: data?.error?.message || "Gemini API error" },
+            { error: dataRes?.error?.message || "Gemini API error" },
             { status: geminiResponse.status }
         )
     }
 
 
-    /* ---------------------------
-       mapping取得
-    --------------------------- */
-
-    const parts = data?.candidates?.[0]?.content?.parts || []
-
+    const parts = dataRes?.candidates?.[0]?.content?.parts || []
     const text = parts.map(p => p.text || "").join("")
 
     let mapping
@@ -223,7 +277,6 @@ Example:
     try {
 
         const parsed = JSON.parse(text)
-
         mapping = parsed.mapping
 
         if (!mapping || typeof mapping !== "object") {
@@ -241,71 +294,84 @@ Example:
 
 
     /* ---------------------------
-       CSV変換
+       キャッシュ保存
     --------------------------- */
 
-    const indexMap = baseHeader.map(col => {
+    await env.AI_CACHE.put(
+        cacheKey,
+        JSON.stringify(mapping),
+        { expirationTtl: 86400 }
+    )
 
-        const source = mapping[col]
+    await cache.put(
+        cacheRequest,
+        new Response(JSON.stringify(mapping))
+    )
 
-        const idx = convertHeader.indexOf(source)
 
-        return idx
+    return processCSV(mapping)
 
-    })
 
-    const result = []
 
-    result.push(baseHeader)
+    /* ---------------------------
+       CSV処理
+    --------------------------- */
 
-    for (const row of convertRows) {
+    function processCSV(mapping) {
 
-        const newRow = indexMap.map(i => {
+        const indexMap = baseHeader.map(col => {
 
-            if (i === -1) return ""
+            const source = mapping[col]
+            const idx = convertHeader.indexOf(source)
 
-            return row[i] || ""
+            return idx
 
         })
 
-        result.push(newRow)
+        const result = []
 
-    }
+        result.push(baseHeader)
 
-    function escapeCSV(value) {
+        for (const row of convertRows) {
 
-        if (value === null || value === undefined) return ""
+            const newRow = indexMap.map(i => {
 
-        const str = String(value)
+                if (i === -1) return ""
+                return row[i] || ""
 
-        if (str.includes('"')) {
-            return `"${str.replace(/"/g, '""')}"`
+            })
+
+            result.push(newRow)
+
         }
 
-        if (str.includes(",") || str.includes("\n")) {
-            return `"${str}"`
+        function escapeCSV(value) {
+
+            if (value === null || value === undefined) return ""
+
+            const str = String(value)
+
+            if (str.includes('"')) {
+                return `"${str.replace(/"/g, '""')}"`
+            }
+
+            if (str.includes(",") || str.includes("\n")) {
+                return `"${str}"`
+            }
+
+            return str
         }
 
-        return str
+        const csv = result
+            .map(r => r.map(escapeCSV).join(","))
+            .join("\n")
+
+        return Response.json({
+            mapping,
+            rows: result.length - 1,
+            csv
+        })
+
     }
-
-    /* ---------------------------
-       CSV生成
-    --------------------------- */
-
-    const csv = result
-        .map(r => r.map(escapeCSV).join(","))
-        .join("\n")
-
-
-    /* ---------------------------
-       return
-    --------------------------- */
-
-    return Response.json({
-        mapping,
-        rows: result.length - 1,
-        csv
-    })
 
 }

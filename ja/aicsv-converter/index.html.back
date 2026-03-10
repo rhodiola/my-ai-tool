@@ -47,20 +47,6 @@
             justify-content: center;
             align-items: center;
             cursor: pointer;
-            position: relative;
-        }
-
-        .clear-btn {
-            position: absolute;
-            top: 6px;
-            right: 10px;
-            font-size: 14px;
-            color: #888;
-            cursor: pointer;
-        }
-
-        .clear-btn:hover {
-            color: #000;
         }
 
         .drop-title {
@@ -109,13 +95,6 @@
             cursor: default;
         }
 
-        .note {
-            margin-top: 40px;
-            font-size: 14px;
-            color: #666;
-            line-height: 1.6;
-        }
-
         input[type=file] {
             display: none;
         }
@@ -129,24 +108,20 @@
         <h1>AICSV Converter</h1>
 
         <div class="subtitle">
-            AIがファイルを解析し、完成形CSVと同じフォーマットに整形し並べ替えます。<br>
+            AIが変換用CSVを解析し、完成形CSVと同じフォーマットに整形し並べ替えます。<BR>
             ファイルを２つドロップしてクリックするだけです。
         </div>
-
 
         <div class="drop-area-container">
 
             <div id="baseDrop" class="drop-area">
-                <div class="clear-btn" id="clearBase">×</div>
                 <div class="drop-title">完成形CSV</div>
                 <div class="drop-desc">ドロップ または クリックして選択</div>
                 <div class="status" id="baseStatus">未読み込み</div>
                 <input type="file" id="baseFile" accept=".csv">
             </div>
 
-
             <div id="convertDrop" class="drop-area">
-                <div class="clear-btn" id="clearConvert">×</div>
                 <div class="drop-title">変換用CSV</div>
                 <div class="drop-desc">ドロップ または クリックして選択</div>
                 <div class="status" id="convertStatus">未読み込み</div>
@@ -155,26 +130,16 @@
 
         </div>
 
-
         <div class="comment-box">
             <div style="margin-bottom:8px;">AIへ伝えるコメント（任意）</div>
             <textarea id="userComment" placeholder="列の意味をAIに伝える補足　例：sku_code は 商品番号（任意）"></textarea>
         </div>
 
-
         <button id="runBtn" disabled>
             AI変換CSVを生成
         </button>
 
-
-        <div class="note">
-            ※出力CSVは <b>UTF-8（BOM付き）</b> 形式で作成され、通常のメモ帳やExcelでそのまま開くことができます。<br>
-            ※AIによる自動変換のため、結果が完全でない場合があります。出力されたデータは必ず内容をご確認のうえご利用ください。<br>
-            本ツールの利用によって生じたいかなる損害についても、当サイトは責任を負いません。
-        </div>
-
     </div>
-
 
     <script>
 
@@ -196,6 +161,7 @@
         }
 
 
+        /* CSVセル安全分割 */
         function splitCSVRow(row) {
 
             const result = []
@@ -260,6 +226,7 @@
                 console.error(error)
 
             }
+
         }
 
 
@@ -315,6 +282,8 @@
 
             updateRunButton()
 
+            console.log("base loaded", name, baseCSV.length)
+
         })
 
 
@@ -327,43 +296,12 @@
 
             updateRunButton()
 
+            console.log("convert loaded", name, convertCSV.length)
+
         })
 
 
-        /* ファイル解除 */
-
-        document.getElementById("clearBase").onclick = () => {
-
-            baseCSV = ""
-            baseLoaded = false
-
-            document.getElementById("baseFile").value = ""
-            document.getElementById("baseStatus").innerText = "未読み込み"
-
-            updateRunButton()
-
-        }
-
-        document.getElementById("clearConvert").onclick = () => {
-
-            convertCSV = ""
-            convertLoaded = false
-
-            document.getElementById("convertFile").value = ""
-            document.getElementById("convertStatus").innerText = "未読み込み"
-
-            updateRunButton()
-
-        }
-
-
-        /* 実行 */
-
         runBtn.addEventListener("click", async () => {
-
-            runBtn.disabled = true
-            runBtn.textContent = "処理中..."
-
 
             const comment = document.getElementById("userComment").value
 
@@ -381,58 +319,46 @@
             const convertAll = convertRows.slice(1)
 
 
-            try {
+            const res = await fetch("/api/aicsv-convert", {
 
-                const res = await fetch("/api/aicsv-convert", {
+                method: "POST",
 
-                    method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
 
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
+                body: JSON.stringify({
 
-                    body: JSON.stringify({
-
-                        baseHeader,
-                        baseSample,
-                        convertHeader,
-                        convertSample,
-                        convertRows: convertAll,
-                        comment,
-                        timestamp: Date.now()
-
-                    })
+                    baseHeader,
+                    baseSample,
+                    convertHeader,
+                    convertSample,
+                    convertRows: convertAll,
+                    comment,
+                    timestamp: Date.now()
 
                 })
 
-                const data = await res.json()
+            })
 
-                if (!res.ok) {
 
-                    alert("Error: " + data.error)
+            const data = await res.json()
 
-                    runBtn.disabled = false
-                    runBtn.textContent = "AI変換CSVを生成"
 
-                    return
+            if (!res.ok) {
 
-                }
-
-                const blob = new Blob(["\uFEFF" + data.csv], { type: "text/csv;charset=utf-8" })
-                const url = URL.createObjectURL(blob)
-
-                const a = document.createElement("a")
-                a.href = url
-                a.download = "converted.csv"
-                a.click()
+                alert("Error: " + data.error)
+                return
 
             }
-            finally {
 
-                runBtn.disabled = false
-                runBtn.textContent = "AI変換CSVを生成"
+            const blob = new Blob(["\uFEFF" + data.csv], { type: "text/csv;charset=utf-8" })
+            const url = URL.createObjectURL(blob)
 
-            }
+            const a = document.createElement("a")
+            a.href = url
+            a.download = "converted.csv"
+            a.click()
 
         })
 

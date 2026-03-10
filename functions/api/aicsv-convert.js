@@ -168,7 +168,7 @@ Example:
     --------------------------- */
 
     const geminiResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/Gemini 3.1 Flash Lite:generateContent?key=${env.GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/Gemini-3.1-Flash-Lite:generateContent?key=${env.GEMINI_API_KEY}`,
         {
             method: "POST",
             headers: {

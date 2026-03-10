@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>AICSV Converter</title>
+    <title>AI CSV Converter</title>
 
     <style>
         body {
@@ -47,20 +47,6 @@
             justify-content: center;
             align-items: center;
             cursor: pointer;
-            position: relative;
-        }
-
-        .clear-btn {
-            position: absolute;
-            top: 6px;
-            right: 10px;
-            font-size: 14px;
-            color: #888;
-            cursor: pointer;
-        }
-
-        .clear-btn:hover {
-            color: #000;
         }
 
         .drop-title {
@@ -78,6 +64,18 @@
             margin-top: 10px;
             font-size: 14px;
             color: #444;
+        }
+
+        /* ▼ 控えめな解除ボタン */
+        .clear-btn {
+            margin-left: 8px;
+            font-size: 13px;
+            color: #2563eb;
+            cursor: pointer;
+        }
+
+        .clear-btn:hover {
+            text-decoration: underline;
         }
 
         .comment-box {
@@ -126,55 +124,58 @@
 
     <div class="wrapper">
 
-        <h1>AICSV Converter</h1>
+        <h1>AI CSV Converter</h1>
 
         <div class="subtitle">
-            AIがファイルを解析し、完成形CSVと同じフォーマットに整形し並べ替えます。<br>
+            AIがファイルを解析し、完成形CSVと同じフォーマットに整形しデータを並べ替えます。<br>
             ファイルを２つドロップしてクリックするだけです。
         </div>
-
 
         <div class="drop-area-container">
 
             <div id="baseDrop" class="drop-area">
-                <div class="clear-btn" id="clearBase">×</div>
                 <div class="drop-title">完成形CSV</div>
                 <div class="drop-desc">ドロップ または クリックして選択</div>
-                <div class="status" id="baseStatus">未読み込み</div>
+
+                <div class="status">
+                    <span id="baseStatus">未読み込み</span>
+                    <span class="clear-btn" id="clearBase">解除</span>
+                </div>
+
                 <input type="file" id="baseFile" accept=".csv">
             </div>
 
 
             <div id="convertDrop" class="drop-area">
-                <div class="clear-btn" id="clearConvert">×</div>
                 <div class="drop-title">変換用CSV</div>
                 <div class="drop-desc">ドロップ または クリックして選択</div>
-                <div class="status" id="convertStatus">未読み込み</div>
+
+                <div class="status">
+                    <span id="convertStatus">未読み込み</span>
+                    <span class="clear-btn" id="clearConvert">解除</span>
+                </div>
+
                 <input type="file" id="convertFile" accept=".csv">
             </div>
 
         </div>
-
 
         <div class="comment-box">
             <div style="margin-bottom:8px;">AIへ伝えるコメント（任意）</div>
             <textarea id="userComment" placeholder="列の意味をAIに伝える補足　例：sku_code は 商品番号（任意）"></textarea>
         </div>
 
-
         <button id="runBtn" disabled>
             AI変換CSVを生成
         </button>
 
-
         <div class="note">
-            ※出力CSVは <b>UTF-8（BOM付き）</b> 形式で作成され、通常のメモ帳やExcelでそのまま開くことができます。<br>
+            ※出力CSVは <b>UTF-8（BOM付き）</b> 形式で作成され、通常のメモ帳やExcelで開くことができます。<br>
             ※AIによる自動変換のため、結果が完全でない場合があります。出力されたデータは必ず内容をご確認のうえご利用ください。<br>
             本ツールの利用によって生じたいかなる損害についても、当サイトは責任を負いません。
         </div>
 
     </div>
-
 
     <script>
 
@@ -330,9 +331,11 @@
         })
 
 
-        /* ファイル解除 */
+        /* ▼ ファイル解除 */
 
-        document.getElementById("clearBase").onclick = () => {
+        document.getElementById("clearBase").onclick = (e) => {
+
+            e.stopPropagation()
 
             baseCSV = ""
             baseLoaded = false
@@ -344,7 +347,9 @@
 
         }
 
-        document.getElementById("clearConvert").onclick = () => {
+        document.getElementById("clearConvert").onclick = (e) => {
+
+            e.stopPropagation()
 
             convertCSV = ""
             convertLoaded = false
@@ -357,20 +362,17 @@
         }
 
 
-        /* 実行 */
+        /* ▼ 実行 */
 
         runBtn.addEventListener("click", async () => {
 
             runBtn.disabled = true
             runBtn.textContent = "処理中..."
 
-
             const comment = document.getElementById("userComment").value
-
 
             const baseRows = parseLines(baseCSV).map(r => splitCSVRow(r))
             const convertRows = parseLines(convertCSV).map(r => splitCSVRow(r))
-
 
             const baseHeader = baseRows[0]
             const baseSample = baseRows.slice(1, 4)
@@ -379,7 +381,6 @@
             const convertSample = convertRows.slice(1, 4)
 
             const convertAll = convertRows.slice(1)
-
 
             try {
 
@@ -410,10 +411,6 @@
                 if (!res.ok) {
 
                     alert("Error: " + data.error)
-
-                    runBtn.disabled = false
-                    runBtn.textContent = "AI変換CSVを生成"
-
                     return
 
                 }

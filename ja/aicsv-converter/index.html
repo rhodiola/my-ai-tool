@@ -141,6 +141,7 @@
     </div>
 
     <script>
+
         let baseCSV = ""
         let convertCSV = ""
 
@@ -148,6 +149,7 @@
         let convertLoaded = false
 
         const runBtn = document.getElementById("runBtn")
+
 
         function parseLines(text) {
             return text
@@ -157,31 +159,83 @@
                 .filter(line => line.trim() !== "")
         }
 
+
+        /* CSVセル安全分割 */
+        function splitCSVRow(row) {
+
+            const result = []
+            let current = ""
+            let inQuotes = false
+
+            for (let i = 0; i < row.length; i++) {
+
+                const char = row[i]
+
+                if (char === '"') {
+
+                    if (inQuotes && row[i + 1] === '"') {
+                        current += '"'
+                        i++
+                    } else {
+                        inQuotes = !inQuotes
+                    }
+
+                } else if (char === ',' && !inQuotes) {
+
+                    result.push(current)
+                    current = ""
+
+                } else {
+
+                    current += char
+
+                }
+            }
+
+            result.push(current)
+
+            return result
+        }
+
+
         async function readFile(file, callback) {
+
             try {
+
                 const buffer = await file.arrayBuffer()
                 let text = ""
 
                 try {
+
                     const decoder = new TextDecoder("utf-8", { fatal: true })
                     text = decoder.decode(buffer)
+
                 } catch {
+
                     const decoder = new TextDecoder("shift-jis")
                     text = decoder.decode(buffer)
+
                 }
 
                 callback(text, file.name)
+
             } catch (error) {
+
                 alert("ファイルの読み込みに失敗しました: " + file.name)
                 console.error(error)
+
             }
+
         }
+
 
         function updateRunButton() {
             runBtn.disabled = !(baseLoaded && convertLoaded)
         }
 
+
         function setupArea(dropId, fileId, callback) {
+
             const drop = document.getElementById(dropId)
             const fileInput = document.getElementById(fileId)
 
@@ -190,10 +244,13 @@
             })
 
             fileInput.addEventListener("change", async () => {
+
                 const file = fileInput.files[0]
+
                 if (file) {
                     await readFile(file, callback)
                 }
+
             })
 
             drop.addEventListener("dragover", e => {
@@ -201,50 +258,76 @@
             })
 
             drop.addEventListener("drop", async e => {
+
                 e.preventDefault()
+
                 const file = e.dataTransfer.files[0]
+
                 if (file) {
                     await readFile(file, callback)
                 }
+
             })
+
         }
 
+
         setupArea("baseDrop", "baseFile", (data, name) => {
+
             baseCSV = data
             baseLoaded = true
+
             document.getElementById("baseStatus").innerText = "Loaded: " + name
+
             updateRunButton()
+
             console.log("base loaded", name, baseCSV.length)
+
         })
 
+
         setupArea("convertDrop", "convertFile", (data, name) => {
+
             convertCSV = data
             convertLoaded = true
+
             document.getElementById("convertStatus").innerText = "Loaded: " + name
+
             updateRunButton()
+
             console.log("convert loaded", name, convertCSV.length)
+
         })
+
 
         runBtn.addEventListener("click", async () => {
 
             const comment = document.getElementById("userComment").value
 
-            const baseRows = parseLines(baseCSV).map(r => r.split(","))
-            const convertRows = parseLines(convertCSV).map(r => r.split(","))
+
+            const baseRows = parseLines(baseCSV).map(r => splitCSVRow(r))
+            const convertRows = parseLines(convertCSV).map(r => splitCSVRow(r))
+
 
             const baseHeader = baseRows[0]
             const baseSample = baseRows.slice(1, 4)
 
             const convertHeader = convertRows[0]
             const convertSample = convertRows.slice(1, 4)
+
             const convertAll = convertRows.slice(1)
 
+
             const res = await fetch("/api/aicsv-convert", {
+
                 method: "POST",
+
                 headers: {
                     "Content-Type": "application/json"
                 },
+
                 body: JSON.stringify({
+
                     baseHeader,
                     baseSample,
                     convertHeader,
@@ -252,15 +335,22 @@
                     convertRows: convertAll,
                     comment,
                     timestamp: Date.now()
+
                 })
+
             })
+
 
             const data = await res.json()
 
+
             if (!res.ok) {
+
                 alert("Error: " + data.error)
                 return
+
             }
+
 
             const blob = new Blob([data.csv], { type: "text/csv" })
             const url = URL.createObjectURL(blob)
@@ -272,7 +362,9 @@
 
         })
 
+
         updateRunButton()
+
     </script>
 
 </body>

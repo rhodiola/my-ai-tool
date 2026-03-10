@@ -272,13 +272,29 @@ Example:
 
     }
 
+    function escapeCSV(value) {
+
+        if (value === null || value === undefined) return ""
+
+        const str = String(value)
+
+        if (str.includes('"')) {
+            return `"${str.replace(/"/g, '""')}"`
+        }
+
+        if (str.includes(",") || str.includes("\n")) {
+            return `"${str}"`
+        }
+
+        return str
+    }
 
     /* ---------------------------
        CSV生成
     --------------------------- */
 
     const csv = result
-        .map(r => r.join(","))
+        .map(r => r.map(escapeCSV).join(","))
         .join("\n")
 
 

@@ -108,20 +108,21 @@
         <h1>AICSV Converter</h1>
 
         <div class="subtitle">
-            AIがCSV構造を解析し、データを変換します
+            AIが変換用CSVを解析し、完成形CSVと同じフォーマットに整形し並べ替えます。<BR>
+            ファイルを２つドロップしてクリックするだけです。
         </div>
 
         <div class="drop-area-container">
 
             <div id="baseDrop" class="drop-area">
-                <div class="drop-title">基礎CSV</div>
+                <div class="drop-title">完成形CSV</div>
                 <div class="drop-desc">ドロップ または クリックして選択</div>
                 <div class="status" id="baseStatus">未読み込み</div>
                 <input type="file" id="baseFile" accept=".csv">
             </div>
 
             <div id="convertDrop" class="drop-area">
-                <div class="drop-title">変換CSV</div>
+                <div class="drop-title">変換用CSV</div>
                 <div class="drop-desc">ドロップ または クリックして選択</div>
                 <div class="status" id="convertStatus">未読み込み</div>
                 <input type="file" id="convertFile" accept=".csv">
@@ -131,7 +132,8 @@
 
         <div class="comment-box">
             <div style="margin-bottom:8px;">AIへ伝えるコメント（任意）</div>
-            <textarea id="userComment" placeholder="例：列Aは商品コード、列Bは価格です"></textarea>
+            <textarea id="userComment"
+                placeholder="AIが判断するので基本的にこの欄は未入力で大丈夫です。データの表示方法や表現を変えたいなど、特別な指示がある場合はコメントを入れて下さい。"></textarea>
         </div>
 
         <button id="runBtn" disabled>

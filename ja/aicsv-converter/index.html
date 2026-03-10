@@ -149,6 +149,14 @@
 
         const runBtn = document.getElementById("runBtn")
 
+        function parseLines(text) {
+            return text
+                .replace(/\r\n/g, "\n")
+                .replace(/\r/g, "\n")
+                .split("\n")
+                .filter(line => line.trim() !== "")
+        }
+
         async function readFile(file, callback) {
             try {
                 const buffer = await file.arrayBuffer()
@@ -221,8 +229,8 @@
 
             const comment = document.getElementById("userComment").value
 
-            const baseRows = baseCSV.split("\n").map(r => r.split(","))
-            const convertRows = convertCSV.split("\n").map(r => r.split(","))
+            const baseRows = parseLines(baseCSV).map(r => r.split(","))
+            const convertRows = parseLines(convertCSV).map(r => r.split(","))
 
             const baseHeader = baseRows[0]
             const baseSample = baseRows.slice(1, 4)

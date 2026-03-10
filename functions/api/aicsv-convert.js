@@ -184,7 +184,6 @@ Example:
     const cacheKey = hashArray.map(b => b.toString(16).padStart(2, "0")).join("")
 
 
-
     /* ---------------------------
        Workers Cache
     --------------------------- */
@@ -194,11 +193,8 @@ Example:
     let cacheResponse = await cache.match(cacheRequest)
 
     if (cacheResponse) {
-
         const mapping = await cacheResponse.json()
-
         return processCSV(mapping)
-
     }
 
 
@@ -209,7 +205,6 @@ Example:
     let kv = await env.AI_CACHE.get(cacheKey)
 
     if (kv) {
-
         const mapping = JSON.parse(kv)
 
         await cache.put(
@@ -218,7 +213,6 @@ Example:
         )
 
         return processCSV(mapping)
-
     }
 
 
@@ -249,7 +243,6 @@ Example:
         }
     )
 
-
     let dataRes
 
     try {
@@ -269,13 +262,16 @@ Example:
     }
 
 
+    /* ---------------------------
+       mapping取得
+    --------------------------- */
+
     const parts = dataRes?.candidates?.[0]?.content?.parts || []
     const text = parts.map(p => p.text || "").join("")
 
     let mapping
 
     try {
-
         const parsed = JSON.parse(text)
         mapping = parsed.mapping
 
@@ -284,12 +280,10 @@ Example:
         }
 
     } catch {
-
         return Response.json(
             { error: "mapping parse failed", raw: text },
             { status: 502 }
         )
-
     }
 
 
@@ -308,7 +302,6 @@ Example:
         new Response(JSON.stringify(mapping))
     )
 
-
     return processCSV(mapping)
 
 
@@ -320,12 +313,16 @@ Example:
     function processCSV(mapping) {
 
         const indexMap = baseHeader.map(col => {
-
             const source = mapping[col]
             const idx = convertHeader.indexOf(source)
-
             return idx
+        })
 
+        const columnSpecs = baseHeader.map((header, targetIndex) => {
+            const samples = baseSample
+                .map(row => row?.[targetIndex])
+                .filter(v => v !== undefined && v !== null && String(v).trim() !== "")
+            return detectTargetSpec(header, samples)
         })
 
         const result = []
@@ -334,13 +331,14 @@ Example:
 
         for (const row of convertRows) {
 
-            const newRow = indexMap.map(i => {
+            const newRow = indexMap.map((sourceIndex, targetIndex) => {
 
-                if (i === -1) return ""
+                if (sourceIndex === -1) return ""
 
-                const value = row[i] || ""
+                const value = row[sourceIndex] ?? ""
+                const spec = columnSpecs[targetIndex]
 
-                return normalizeDateTime(value)
+                return normalizeBySpec(value, spec)
 
             })
 
@@ -374,68 +372,403 @@ Example:
             rows: result.length - 1,
             csv
         })
-
     }
 
-    function normalizeDateTime(value) {
 
-        if (!value) return value
 
-        let v = String(value).trim()
+    /* ---------------------------
+       型推定
+    --------------------------- */
 
-        /* 日本語形式 → 標準化 */
+    function detectTargetSpec(header, samples) {
 
-        v = v
+        const headerText = String(header || "").toLowerCase()
+
+        const looksLikeDateHeader =
+            /date|day|birthday|dob|created|updated|shipped|ordered|delivery|time|datetime|timestamp|日時|日付|時刻|年月日|作成日|更新日|発送日|注文日/.test(headerText)
+
+        if (!samples.length) {
+            return { type: looksLikeDateHeader ? "dateish" : "text" }
+        }
+
+        let dateCount = 0
+        let datetimeCount = 0
+        let timeCount = 0
+
+        for (const raw of samples) {
+            const kind = detectValueKind(raw)
+
+            if (kind === "datetime") datetimeCount++
+            else if (kind === "date") dateCount++
+            else if (kind === "time") timeCount++
+        }
+
+        const total = samples.length
+        const best = Math.max(dateCount, datetimeCount, timeCount)
+
+        if (best === 0) {
+            return { type: looksLikeDateHeader ? "dateish" : "text" }
+        }
+
+        if (!looksLikeDateHeader && best < Math.ceil(total * 0.6)) {
+            return { type: "text" }
+        }
+
+        if (datetimeCount >= dateCount && datetimeCount >= timeCount) {
+            return { type: "datetime" }
+        }
+
+        if (timeCount >= dateCount && timeCount >= datetimeCount) {
+            return { type: "time" }
+        }
+
+        return { type: "date" }
+    }
+
+
+    function detectValueKind(value) {
+        const parsed = parseDateTimeParts(value)
+        return parsed ? parsed.type : null
+    }
+
+
+    /* ---------------------------
+       値変換
+    --------------------------- */
+
+    function normalizeBySpec(value, spec) {
+
+        if (value === null || value === undefined) return ""
+        if (!spec || spec.type === "text") return value
+
+        const parsed = parseDateTimeParts(value)
+
+        if (!parsed) return value
+
+        if (spec.type === "date") {
+            if (!parsed.year || !parsed.month || !parsed.day) return value
+            return formatDate(parsed.year, parsed.month, parsed.day)
+        }
+
+        if (spec.type === "datetime") {
+            if (!parsed.year || !parsed.month || !parsed.day) return value
+            return formatDateTime(
+                parsed.year,
+                parsed.month,
+                parsed.day,
+                parsed.hour ?? 0,
+                parsed.minute ?? 0,
+                parsed.second ?? 0
+            )
+        }
+
+        if (spec.type === "time") {
+            if (parsed.hour === undefined || parsed.minute === undefined) return value
+            return formatTime(
+                parsed.hour,
+                parsed.minute,
+                parsed.second ?? 0
+            )
+        }
+
+        if (spec.type === "dateish") {
+            if (parsed.type === "datetime") {
+                return formatDateTime(
+                    parsed.year,
+                    parsed.month,
+                    parsed.day,
+                    parsed.hour ?? 0,
+                    parsed.minute ?? 0,
+                    parsed.second ?? 0
+                )
+            }
+
+            if (parsed.type === "date") {
+                return formatDate(parsed.year, parsed.month, parsed.day)
+            }
+
+            if (parsed.type === "time") {
+                return formatTime(
+                    parsed.hour ?? 0,
+                    parsed.minute ?? 0,
+                    parsed.second ?? 0
+                )
+            }
+        }
+
+        return value
+    }
+
+
+    /* ---------------------------
+       厳格パーサ
+       数字だけは絶対に日付化しない
+    --------------------------- */
+
+    function parseDateTimeParts(input) {
+
+        if (input === null || input === undefined) return null
+
+        const original = String(input).trim()
+        if (!original) return null
+
+        if (/^\d+(\.\d+)?$/.test(original)) {
+            return null
+        }
+
+        let v = normalizeJapaneseDateText(original)
+
+        let m
+
+        /* Time only: HH:mm or HH:mm:ss */
+        m = v.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/)
+        if (m) {
+            const hh = Number(m[1])
+            const mm = Number(m[2])
+            const ss = Number(m[3] || 0)
+
+            if (isValidTime(hh, mm, ss)) {
+                return {
+                    type: "time",
+                    hour: hh,
+                    minute: mm,
+                    second: ss
+                }
+            }
+            return null
+        }
+
+        /* YYYY-MM-DD or YYYY/MM/DD with optional time */
+        m = v.match(
+            /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+        )
+        if (m) {
+            const y = Number(m[1])
+            const mo = Number(m[2])
+            const d = Number(m[3])
+            const hh = m[4] !== undefined ? Number(m[4]) : undefined
+            const mm = m[5] !== undefined ? Number(m[5]) : undefined
+            const ss = m[6] !== undefined ? Number(m[6]) : 0
+
+            if (!isValidDate(y, mo, d)) return null
+
+            if (hh !== undefined || mm !== undefined) {
+                if (!isValidTime(hh ?? 0, mm ?? 0, ss ?? 0)) return null
+                return {
+                    type: "datetime",
+                    year: y,
+                    month: mo,
+                    day: d,
+                    hour: hh ?? 0,
+                    minute: mm ?? 0,
+                    second: ss ?? 0
+                }
+            }
+
+            return {
+                type: "date",
+                year: y,
+                month: mo,
+                day: d
+            }
+        }
+
+        /* DD/MM/YYYY or MM/DD/YYYY only when unambiguous */
+        m = v.match(
+            /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+        )
+        if (m) {
+            const a = Number(m[1])
+            const b = Number(m[2])
+            const y = Number(m[3])
+            const hh = m[4] !== undefined ? Number(m[4]) : undefined
+            const mm = m[5] !== undefined ? Number(m[5]) : undefined
+            const ss = m[6] !== undefined ? Number(m[6]) : 0
+
+            let mo
+            let d
+
+            if (a > 12 && b <= 12) {
+                d = a
+                mo = b
+            } else if (b > 12 && a <= 12) {
+                mo = a
+                d = b
+            } else {
+                return null
+            }
+
+            if (!isValidDate(y, mo, d)) return null
+
+            if (hh !== undefined || mm !== undefined) {
+                if (!isValidTime(hh ?? 0, mm ?? 0, ss ?? 0)) return null
+                return {
+                    type: "datetime",
+                    year: y,
+                    month: mo,
+                    day: d,
+                    hour: hh ?? 0,
+                    minute: mm ?? 0,
+                    second: ss ?? 0
+                }
+            }
+
+            return {
+                type: "date",
+                year: y,
+                month: mo,
+                day: d
+            }
+        }
+
+        /* English month names */
+        const monthMap = {
+            jan: 1, january: 1,
+            feb: 2, february: 2,
+            mar: 3, march: 3,
+            apr: 4, april: 4,
+            may: 5,
+            jun: 6, june: 6,
+            jul: 7, july: 7,
+            aug: 8, august: 8,
+            sep: 9, sept: 9, september: 9,
+            oct: 10, october: 10,
+            nov: 11, november: 11,
+            dec: 12, december: 12
+        }
+
+        m = v.match(
+            /^([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+        )
+        if (m) {
+            const mo = monthMap[m[1].toLowerCase()]
+            const d = Number(m[2])
+            const y = Number(m[3])
+            const hh = m[4] !== undefined ? Number(m[4]) : undefined
+            const mm = m[5] !== undefined ? Number(m[5]) : undefined
+            const ss = m[6] !== undefined ? Number(m[6]) : 0
+
+            if (!mo || !isValidDate(y, mo, d)) return null
+
+            if (hh !== undefined || mm !== undefined) {
+                if (!isValidTime(hh ?? 0, mm ?? 0, ss ?? 0)) return null
+                return {
+                    type: "datetime",
+                    year: y,
+                    month: mo,
+                    day: d,
+                    hour: hh ?? 0,
+                    minute: mm ?? 0,
+                    second: ss ?? 0
+                }
+            }
+
+            return {
+                type: "date",
+                year: y,
+                month: mo,
+                day: d
+            }
+        }
+
+        m = v.match(
+            /^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+        )
+        if (m) {
+            const d = Number(m[1])
+            const mo = monthMap[m[2].toLowerCase()]
+            const y = Number(m[3])
+            const hh = m[4] !== undefined ? Number(m[4]) : undefined
+            const mm = m[5] !== undefined ? Number(m[5]) : undefined
+            const ss = m[6] !== undefined ? Number(m[6]) : 0
+
+            if (!mo || !isValidDate(y, mo, d)) return null
+
+            if (hh !== undefined || mm !== undefined) {
+                if (!isValidTime(hh ?? 0, mm ?? 0, ss ?? 0)) return null
+                return {
+                    type: "datetime",
+                    year: y,
+                    month: mo,
+                    day: d,
+                    hour: hh ?? 0,
+                    minute: mm ?? 0,
+                    second: ss ?? 0
+                }
+            }
+
+            return {
+                type: "date",
+                year: y,
+                month: mo,
+                day: d
+            }
+        }
+
+        return null
+    }
+
+
+    function normalizeJapaneseDateText(value) {
+        return String(value)
+            .trim()
+            .replace(/[　]/g, " ")
             .replace(/年/g, "-")
             .replace(/月/g, "-")
             .replace(/日/g, "")
             .replace(/時/g, ":")
             .replace(/分/g, ":")
             .replace(/秒/g, "")
+            .replace(/\s+/g, " ")
+            .replace(/T/g, " ")
+            .replace(/Z$/i, "")
+    }
 
-        /* ISO T をスペースへ */
 
-        v = v.replace("T", " ")
+    function isValidDate(year, month, day) {
+        if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return false
+        if (month < 1 || month > 12) return false
+        if (day < 1 || day > 31) return false
 
-        /* 時刻のみ */
+        const dt = new Date(year, month - 1, day)
 
-        if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(v)) {
+        return (
+            dt.getFullYear() === year &&
+            dt.getMonth() === month - 1 &&
+            dt.getDate() === day
+        )
+    }
 
-            const parts = v.split(":")
-            const h = parts[0].padStart(2, "0")
-            const m = parts[1].padStart(2, "0")
-            const s = (parts[2] || "00").padStart(2, "0")
 
-            return `${h}:${m}:${s}`
+    function isValidTime(hour, minute, second) {
+        return (
+            Number.isInteger(hour) &&
+            Number.isInteger(minute) &&
+            Number.isInteger(second) &&
+            hour >= 0 && hour <= 23 &&
+            minute >= 0 && minute <= 59 &&
+            second >= 0 && second <= 59
+        )
+    }
 
-        }
 
-        /* Date parse */
+    function pad2(n) {
+        return String(n).padStart(2, "0")
+    }
 
-        const d = new Date(v)
 
-        if (isNaN(d.getTime())) {
-            return value
-        }
+    function formatDate(year, month, day) {
+        return `${year}-${pad2(month)}-${pad2(day)}`
+    }
 
-        const Y = d.getFullYear()
-        const M = String(d.getMonth() + 1).padStart(2, "0")
-        const D = String(d.getDate()).padStart(2, "0")
 
-        const h = String(d.getHours()).padStart(2, "0")
-        const m = String(d.getMinutes()).padStart(2, "0")
-        const s = String(d.getSeconds()).padStart(2, "0")
+    function formatTime(hour, minute, second) {
+        return `${pad2(hour)}:${pad2(minute)}:${pad2(second)}`
+    }
 
-        /* datetime */
 
-        if (v.includes(":")) {
-            return `${Y}-${M}-${D} ${h}:${m}:${s}`
-        }
-
-        /* date */
-
-        return `${Y}-${M}-${D}`
-
+    function formatDateTime(year, month, day, hour, minute, second) {
+        return `${formatDate(year, month, day)} ${formatTime(hour, minute, second)}`
     }
 
 }

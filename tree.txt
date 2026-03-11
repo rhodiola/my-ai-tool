@@ -8,23 +8,23 @@ ai-tools-site
 ├─en
 │  │  index.html
 │  │  
-│  ├─aicsv-converter
+│  ├─aicsv-converter-gemma
 │  │      index.html
 │  │      
-│  └─summarizer
-│          index.html
+│  └
+│          
 │          
 ├─functions
 │  └─api
-│          aicsv-convert.js
-│          summarize.js
+│          aicsv-convert-gemma.js
+│
 │          
 └─ja
     │  index.html
     │  
-    ├─aicsv-converter
+    ├─aicsv-converter-gemma
     │      index.html
     │      
-    └─summarizer
-            index.html
+    └
+            
             

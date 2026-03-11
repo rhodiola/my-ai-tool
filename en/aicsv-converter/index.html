@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>AI CSV Converter</title>
+    <title>AI CSV Converter (Gemma)</title>
 
     <style>
         body {
@@ -12,8 +12,6 @@
             background: #f3f4f6;
             font-size: 18px;
         }
-
-        /* top link */
 
         .top-link {
             position: absolute;
@@ -46,17 +44,19 @@
             color: #666;
             margin-bottom: 40px;
             font-size: 18px;
+            line-height: 1.7;
         }
 
         .drop-area-container {
             display: flex;
             gap: 30px;
             justify-content: center;
+            align-items: stretch;
         }
 
         .drop-area {
             width: 400px;
-            height: 230px;
+            min-height: 230px;
             border: 2px dashed #bbb;
             border-radius: 10px;
             background: white;
@@ -65,6 +65,13 @@
             justify-content: center;
             align-items: center;
             cursor: pointer;
+            padding: 18px 16px;
+            box-sizing: border-box;
+        }
+
+        .drop-area.dragover {
+            border-color: #2563eb;
+            background: #eff6ff;
         }
 
         .drop-title {
@@ -82,6 +89,7 @@
             margin-top: 10px;
             font-size: 14px;
             color: #444;
+            line-height: 1.6;
         }
 
         .clear-btn {
@@ -95,17 +103,40 @@
             text-decoration: underline;
         }
 
+        .meta {
+            margin-top: 8px;
+            font-size: 13px;
+            color: #666;
+            line-height: 1.5;
+            word-break: break-word;
+        }
+
+        .warning {
+            margin-top: 10px;
+            font-size: 13px;
+            color: #b45309;
+            line-height: 1.6;
+            max-width: 340px;
+        }
+
+        .warning.error {
+            color: #b91c1c;
+        }
+
         .comment-box {
             margin-top: 35px;
         }
 
         .comment-box textarea {
             width: 600px;
-            height: 60px;
+            max-width: calc(100vw - 60px);
+            height: 68px;
             font-size: 16px;
             padding: 8px;
             border-radius: 6px;
             border: 1px solid #ccc;
+            resize: vertical;
+            box-sizing: border-box;
         }
 
         button {
@@ -128,7 +159,20 @@
             margin-top: 40px;
             font-size: 14px;
             color: #666;
-            line-height: 1.6;
+            line-height: 1.7;
+        }
+
+        .limit-box {
+            margin: 26px auto 0;
+            max-width: 760px;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 14px 18px;
+            color: #555;
+            font-size: 14px;
+            line-height: 1.7;
+            text-align: left;
         }
 
         input[type=file] {
@@ -145,17 +189,16 @@
 
     <div class="wrapper">
 
-        <h1>AI CSV Converter</h1>
+        <h1>AI CSV Converter (Gemma)</h1>
 
         <div class="subtitle">
-            AI analyzes the files and rearranges the data to match the structure of the target CSV.<br>
-            Simply drop two files and click the button. (The data itself cannot be reformatted)
+            AI analyzes the CSV structure and converts it into the format of the target CSV.<br>
+            Column names and data formats are automatically adjusted and mapped to the most relevant fields.
         </div>
 
         <div class="drop-area-container">
 
             <div id="baseDrop" class="drop-area">
-
                 <div class="drop-title">Target CSV</div>
                 <div class="drop-desc">Drop file or click to select</div>
 
@@ -164,12 +207,13 @@
                     <span class="clear-btn" id="clearBase">Clear</span>
                 </div>
 
-                <input type="file" id="baseFile" accept=".csv">
+                <div class="meta" id="baseMeta"></div>
+                <div class="warning" id="baseWarning"></div>
 
+                <input type="file" id="baseFile" accept=".csv,text/csv">
             </div>
 
             <div id="convertDrop" class="drop-area">
-
                 <div class="drop-title">Source CSV</div>
                 <div class="drop-desc">Drop file or click to select</div>
 
@@ -178,283 +222,40 @@
                     <span class="clear-btn" id="clearConvert">Clear</span>
                 </div>
 
-                <input type="file" id="convertFile" accept=".csv">
+                <div class="meta" id="convertMeta"></div>
+                <div class="warning" id="convertWarning"></div>
 
+                <input type="file" id="convertFile" accept=".csv,text/csv">
             </div>
 
         </div>
 
         <div class="comment-box">
-
             <div style="margin-bottom:8px;">Comment for AI (optional)</div>
-
-            <textarea id="userComment"
-                placeholder="Additional explanation for column meaning. Example: sku_code = product ID"></textarea>
-
+            <textarea id="userComment" maxlength="300"
+                placeholder="Example: sku_code = product ID / status active=enabled inactive=disabled / order_date = order date"></textarea>
         </div>
 
         <button id="runBtn" disabled>
             Generate Converted CSV
         </button>
 
+        <div class="limit-box">
+            <b>Guidelines and Limits</b><br>
+            • Source CSV is expected to contain <b>up to 100 rows</b>.<br>
+            • CSV files with too many columns or extremely large files may fail to process.<br>
+            • The browser reads and analyzes the CSV locally, so very large files may slow down processing.
+        </div>
+
         <div class="note">
-            ※The output CSV is generated in <b>UTF-8 with BOM</b> format and can be opened in editors such as Notepad or
-            Excel.<br>
-            ※Since this conversion is performed automatically by AI, the result may not always be perfect. Please review
-            the generated data before use.<br>
-            The site owner is not responsible for any damages resulting from the use of this tool.
+            * Output CSV is generated in <b>UTF-8 (with BOM)</b> and can be opened with common editors or Excel.<br>
+            * Because AI is used for conversion, results may not be perfect. Please review the output data before
+            use.<br>
+            This tool is provided without any warranty. The site owner is not responsible for any damages resulting from
+            its use.
         </div>
 
     </div>
-
-    <script>
-
-        let baseCSV = ""
-        let convertCSV = ""
-
-        let baseLoaded = false
-        let convertLoaded = false
-
-        const runBtn = document.getElementById("runBtn")
-
-        function parseLines(text) {
-            return text
-                .replace(/\r\n/g, "\n")
-                .replace(/\r/g, "\n")
-                .split("\n")
-                .filter(line => line.trim() !== "")
-        }
-
-        function splitCSVRow(row) {
-
-            const result = []
-            let current = ""
-            let inQuotes = false
-
-            for (let i = 0; i < row.length; i++) {
-
-                const char = row[i]
-
-                if (char === '"') {
-
-                    if (inQuotes && row[i + 1] === '"') {
-                        current += '"'
-                        i++
-                    } else {
-                        inQuotes = !inQuotes
-                    }
-
-                } else if (char === ',' && !inQuotes) {
-
-                    result.push(current)
-                    current = ""
-
-                } else {
-
-                    current += char
-
-                }
-
-            }
-
-            result.push(current)
-
-            return result
-        }
-
-        async function readFile(file, callback) {
-
-            try {
-
-                const buffer = await file.arrayBuffer()
-                let text = ""
-
-                try {
-
-                    const decoder = new TextDecoder("utf-8", { fatal: true })
-                    text = decoder.decode(buffer)
-
-                } catch {
-
-                    const decoder = new TextDecoder("shift-jis")
-                    text = decoder.decode(buffer)
-
-                }
-
-                callback(text, file.name)
-
-            } catch (error) {
-
-                alert("Failed to read file: " + file.name)
-                console.error(error)
-
-            }
-
-        }
-
-        function updateRunButton() {
-            runBtn.disabled = !(baseLoaded && convertLoaded)
-        }
-
-        function setupArea(dropId, fileId, callback) {
-
-            const drop = document.getElementById(dropId)
-            const fileInput = document.getElementById(fileId)
-
-            drop.addEventListener("click", () => {
-                fileInput.click()
-            })
-
-            fileInput.addEventListener("change", async () => {
-
-                const file = fileInput.files[0]
-
-                if (file) {
-                    await readFile(file, callback)
-                }
-
-            })
-
-            drop.addEventListener("dragover", e => {
-                e.preventDefault()
-            })
-
-            drop.addEventListener("drop", async e => {
-
-                e.preventDefault()
-
-                const file = e.dataTransfer.files[0]
-
-                if (file) {
-                    await readFile(file, callback)
-                }
-
-            })
-
-        }
-
-        setupArea("baseDrop", "baseFile", (data, name) => {
-
-            baseCSV = data
-            baseLoaded = true
-
-            document.getElementById("baseStatus").innerText = "Loaded: " + name
-
-            updateRunButton()
-
-        })
-
-        setupArea("convertDrop", "convertFile", (data, name) => {
-
-            convertCSV = data
-            convertLoaded = true
-
-            document.getElementById("convertStatus").innerText = "Loaded: " + name
-
-            updateRunButton()
-
-        })
-
-        document.getElementById("clearBase").onclick = (e) => {
-
-            e.stopPropagation()
-
-            baseCSV = ""
-            baseLoaded = false
-
-            document.getElementById("baseFile").value = ""
-            document.getElementById("baseStatus").innerText = "Not loaded"
-
-            updateRunButton()
-
-        }
-
-        document.getElementById("clearConvert").onclick = (e) => {
-
-            e.stopPropagation()
-
-            convertCSV = ""
-            convertLoaded = false
-
-            document.getElementById("convertFile").value = ""
-            document.getElementById("convertStatus").innerText = "Not loaded"
-
-            updateRunButton()
-
-        }
-
-        runBtn.addEventListener("click", async () => {
-
-            runBtn.disabled = true
-            runBtn.textContent = "Processing..."
-
-            const comment = document.getElementById("userComment").value
-
-            const baseRows = parseLines(baseCSV).map(r => splitCSVRow(r))
-            const convertRows = parseLines(convertCSV).map(r => splitCSVRow(r))
-
-            const baseHeader = baseRows[0]
-            const baseSample = baseRows.slice(1, 4)
-
-            const convertHeader = convertRows[0]
-            const convertSample = convertRows.slice(1, 4)
-
-            const convertAll = convertRows.slice(1)
-
-            try {
-
-                const res = await fetch("/api/aicsv-convert", {
-
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-
-                    body: JSON.stringify({
-
-                        baseHeader,
-                        baseSample,
-                        convertHeader,
-                        convertSample,
-                        convertRows: convertAll,
-                        comment,
-                        timestamp: Date.now()
-
-                    })
-
-                })
-
-                const data = await res.json()
-
-                if (!res.ok) {
-
-                    alert("Error: " + data.error)
-                    return
-
-                }
-
-                const blob = new Blob(["\uFEFF" + data.csv], { type: "text/csv;charset=utf-8" })
-                const url = URL.createObjectURL(blob)
-
-                const a = document.createElement("a")
-                a.href = url
-                a.download = "converted.csv"
-                a.click()
-
-            }
-            finally {
-
-                runBtn.disabled = false
-                runBtn.textContent = "Generate Converted CSV"
-
-            }
-
-        })
-
-        updateRunButton()
-
-    </script>
 
 </body>
 

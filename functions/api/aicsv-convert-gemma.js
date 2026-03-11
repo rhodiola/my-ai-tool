@@ -6,7 +6,6 @@ export async function onRequestPost(context) {
             baseHeader,
             baseSample,
             convertHeader,
-            convertSample,
             convertRows,
             comment
         } = await request.json();
@@ -24,7 +23,8 @@ export async function onRequestPost(context) {
  
         ### 1. 完成形フォーマット
         - ヘッダー: ${JSON.stringify(baseHeader)}
-        - サンプル行（形式の正解）: ${JSON.stringify(baseSample[0])}
+       - サンプル行（形式の参考。複数行）:
+        ${baseSample.map(row => JSON.stringify(row)).join('\n')}
 
         ### 2. 変換用データ
         - ヘッダー: ${JSON.stringify(convertHeader)}
@@ -33,6 +33,7 @@ export async function onRequestPost(context) {
 
         ### 3. 変換の厳守ルール
         - 「完成形フォーマット」の各ヘッダー項目に対し、入力データの中から意味的に最も適合する列を抽出し、指定の順序に並べ替えてください。
+        - 1行だけで判断せず、複数行で共通する形式を優先すること
         - 日付、時間、電話番号、数値、ステータス表記などは、サンプル行の形式をテンプレートとし、項目単位で完全に統一してください。
         - 言語が違う場合は翻訳して関連性を調べて下さい。その際は英語表記を優先して下さい。
         - 入力データに対応する項目がない場合は空欄（""）としてください。

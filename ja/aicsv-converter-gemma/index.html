@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>AICSV Converter</title>
+    <title>AI CSV Converter (Gemma)</title>
 
     <style>
         body {
@@ -11,6 +11,22 @@
             font-family: Arial, Helvetica, sans-serif;
             background: #f3f4f6;
             font-size: 18px;
+        }
+
+        .top-link {
+            position: absolute;
+            top: 20px;
+            left: 30px;
+            font-size: 15px;
+        }
+
+        .top-link a {
+            color: #2563eb;
+            text-decoration: none;
+        }
+
+        .top-link a:hover {
+            text-decoration: underline;
         }
 
         .wrapper {
@@ -66,6 +82,17 @@
             color: #444;
         }
 
+        .clear-btn {
+            margin-left: 8px;
+            font-size: 13px;
+            color: #2563eb;
+            cursor: pointer;
+        }
+
+        .clear-btn:hover {
+            text-decoration: underline;
+        }
+
         .comment-box {
             margin-top: 35px;
         }
@@ -95,6 +122,13 @@
             cursor: default;
         }
 
+        .note {
+            margin-top: 40px;
+            font-size: 14px;
+            color: #666;
+            line-height: 1.6;
+        }
+
         input[type=file] {
             display: none;
         }
@@ -103,13 +137,17 @@
 
 <body>
 
+    <div class="top-link">
+        <a href="/">← トップへ戻る</a>
+    </div>
+
     <div class="wrapper">
 
-        <h1>AICSV Converter</h1>
+        <h1>AI CSV Converter (Gemma)</h1>
 
         <div class="subtitle">
-            AIが変換用CSVを解析し、完成形CSVと同じフォーマットに整形し並べ替えます。<BR>
-            ファイルを２つドロップしてクリックするだけです。
+            Gemma AIがCSV構造を解析し、完成形CSVと同じフォーマットに変換します。<br>
+            ファイルを2つドロップしてクリックするだけです。
         </div>
 
         <div class="drop-area-container">
@@ -117,27 +155,50 @@
             <div id="baseDrop" class="drop-area">
                 <div class="drop-title">完成形CSV</div>
                 <div class="drop-desc">ドロップ または クリックして選択</div>
-                <div class="status" id="baseStatus">未読み込み</div>
+
+                <div class="status">
+                    <span id="baseStatus">未読み込み</span>
+                    <span class="clear-btn" id="clearBase">解除</span>
+                </div>
+
                 <input type="file" id="baseFile" accept=".csv">
+
             </div>
 
             <div id="convertDrop" class="drop-area">
+
                 <div class="drop-title">変換用CSV</div>
                 <div class="drop-desc">ドロップ または クリックして選択</div>
-                <div class="status" id="convertStatus">未読み込み</div>
+
+                <div class="status">
+                    <span id="convertStatus">未読み込み</span>
+                    <span class="clear-btn" id="clearConvert">解除</span>
+                </div>
+
                 <input type="file" id="convertFile" accept=".csv">
+
             </div>
 
         </div>
 
         <div class="comment-box">
-            <div style="margin-bottom:8px;">AIへ伝えるコメント（任意）</div>
-            <textarea id="userComment" placeholder="列の意味をAIに伝える補足　例：sku_code は 商品番号（任意）"></textarea>
+
+            <div style="margin-bottom:8px;">
+                AIへ伝えるコメント（任意）
+            </div>
+
+            <textarea id="userComment" placeholder="例：sku_code は 商品番号"></textarea>
+
         </div>
 
         <button id="runBtn" disabled>
-            AI変換CSVを生成
+            CSVを変換
         </button>
+
+        <div class="note">
+            ※出力CSVは <b>UTF-8（BOM付き）</b> 形式で作成されます。<br>
+            ※AIによる自動変換のため結果は必ず確認してください。
+        </div>
 
     </div>
 
@@ -151,7 +212,6 @@
 
         const runBtn = document.getElementById("runBtn")
 
-
         function parseLines(text) {
             return text
                 .replace(/\r\n/g, "\n")
@@ -160,8 +220,6 @@
                 .filter(line => line.trim() !== "")
         }
 
-
-        /* CSVセル安全分割 */
         function splitCSVRow(row) {
 
             const result = []
@@ -191,6 +249,7 @@
                     current += char
 
                 }
+
             }
 
             result.push(current)
@@ -198,51 +257,37 @@
             return result
         }
 
-
         async function readFile(file, callback) {
+
+            const buffer = await file.arrayBuffer()
+            let text = ""
 
             try {
 
-                const buffer = await file.arrayBuffer()
-                let text = ""
+                const decoder = new TextDecoder("utf-8", { fatal: true })
+                text = decoder.decode(buffer)
 
-                try {
+            } catch {
 
-                    const decoder = new TextDecoder("utf-8", { fatal: true })
-                    text = decoder.decode(buffer)
-
-                } catch {
-
-                    const decoder = new TextDecoder("shift-jis")
-                    text = decoder.decode(buffer)
-
-                }
-
-                callback(text, file.name)
-
-            } catch (error) {
-
-                alert("ファイルの読み込みに失敗しました: " + file.name)
-                console.error(error)
+                const decoder = new TextDecoder("shift-jis")
+                text = decoder.decode(buffer)
 
             }
 
-        }
+            callback(text, file.name)
 
+        }
 
         function updateRunButton() {
             runBtn.disabled = !(baseLoaded && convertLoaded)
         }
-
 
         function setupArea(dropId, fileId, callback) {
 
             const drop = document.getElementById(dropId)
             const fileInput = document.getElementById(fileId)
 
-            drop.addEventListener("click", () => {
-                fileInput.click()
-            })
+            drop.addEventListener("click", () => fileInput.click())
 
             fileInput.addEventListener("change", async () => {
 
@@ -254,9 +299,7 @@
 
             })
 
-            drop.addEventListener("dragover", e => {
-                e.preventDefault()
-            })
+            drop.addEventListener("dragover", e => e.preventDefault())
 
             drop.addEventListener("drop", async e => {
 
@@ -272,7 +315,6 @@
 
         }
 
-
         setupArea("baseDrop", "baseFile", (data, name) => {
 
             baseCSV = data
@@ -282,10 +324,7 @@
 
             updateRunButton()
 
-            console.log("base loaded", name, baseCSV.length)
-
         })
-
 
         setupArea("convertDrop", "convertFile", (data, name) => {
 
@@ -296,19 +335,45 @@
 
             updateRunButton()
 
-            console.log("convert loaded", name, convertCSV.length)
-
         })
 
+        document.getElementById("clearBase").onclick = (e) => {
+
+            e.stopPropagation()
+
+            baseCSV = ""
+            baseLoaded = false
+
+            document.getElementById("baseFile").value = ""
+            document.getElementById("baseStatus").innerText = "未読み込み"
+
+            updateRunButton()
+
+        }
+
+        document.getElementById("clearConvert").onclick = (e) => {
+
+            e.stopPropagation()
+
+            convertCSV = ""
+            convertLoaded = false
+
+            document.getElementById("convertFile").value = ""
+            document.getElementById("convertStatus").innerText = "未読み込み"
+
+            updateRunButton()
+
+        }
 
         runBtn.addEventListener("click", async () => {
 
-            const comment = document.getElementById("userComment").value
+            runBtn.disabled = true
+            runBtn.textContent = "処理中..."
 
+            const comment = document.getElementById("userComment").value
 
             const baseRows = parseLines(baseCSV).map(r => splitCSVRow(r))
             const convertRows = parseLines(convertCSV).map(r => splitCSVRow(r))
-
 
             const baseHeader = baseRows[0]
             const baseSample = baseRows.slice(1, 4)
@@ -318,50 +383,56 @@
 
             const convertAll = convertRows.slice(1)
 
+            try {
 
-            const res = await fetch("/api/aicsv-convert", {
+                const res = await fetch("/api/aicsv-convert-gemma", {
 
-                method: "POST",
+                    method: "POST",
 
-                headers: {
-                    "Content-Type": "application/json"
-                },
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
 
-                body: JSON.stringify({
+                    body: JSON.stringify({
 
-                    baseHeader,
-                    baseSample,
-                    convertHeader,
-                    convertSample,
-                    convertRows: convertAll,
-                    comment,
-                    timestamp: Date.now()
+                        baseHeader,
+                        baseSample,
+                        convertHeader,
+                        convertSample,
+                        convertRows: convertAll,
+                        comment,
+                        timestamp: Date.now()
+
+                    })
 
                 })
 
-            })
+                const data = await res.json()
 
+                if (!res.ok) {
 
-            const data = await res.json()
+                    alert("Error: " + data.error)
+                    return
 
+                }
 
-            if (!res.ok) {
+                const blob = new Blob(["\uFEFF" + data.csv], { type: "text/csv;charset=utf-8" })
+                const url = URL.createObjectURL(blob)
 
-                alert("Error: " + data.error)
-                return
+                const a = document.createElement("a")
+                a.href = url
+                a.download = "converted.csv"
+                a.click()
+
+            }
+            finally {
+
+                runBtn.disabled = false
+                runBtn.textContent = "CSVを変換"
 
             }
 
-            const blob = new Blob(["\uFEFF" + data.csv], { type: "text/csv;charset=utf-8" })
-            const url = URL.createObjectURL(blob)
-
-            const a = document.createElement("a")
-            a.href = url
-            a.download = "converted.csv"
-            a.click()
-
         })
-
 
         updateRunButton()
 

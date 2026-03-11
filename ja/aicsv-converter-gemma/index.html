@@ -189,11 +189,11 @@
 
     <div class="wrapper">
 
-        <h1>((( テスト中 ))) <br>AI CSV Converter (Gemma)</h1>
+        <h1>AI CSV Converter (Gemma)</h1>
 
         <div class="subtitle">
             AIがCSV構造を解析し、完成形CSVと同じフォーマットへ変換します。<br>
-            項目名やデータの表示形式も整形されます。
+            項目名やデータの表示形式も整形され、関連性の高い項目に割り当てられます。
         </div>
 
         <div class="drop-area-container">
@@ -259,8 +259,8 @@
     <script>
 
         const MAX_COMMENT_LENGTH = 300
-        const MAX_COLUMNS = 100
-        const MAX_CONVERT_ROWS = 50000
+        const MAX_COLUMNS = 15
+        const MAX_CONVERT_ROWS = 100
         const WARN_FILE_SIZE_BYTES = 5 * 1024 * 1024
         const HARD_FILE_SIZE_BYTES = 12 * 1024 * 1024
         const SAMPLE_ROW_COUNT = 10

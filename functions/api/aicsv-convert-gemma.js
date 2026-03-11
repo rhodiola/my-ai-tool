@@ -41,7 +41,7 @@ export async function onRequestPost(context) {
         ### 出力規定
         - 完成形フォーマットのヘッダー行を含めたCSV形式のみを出力してください。
         - 前置きや解説は一切含めず、純粋なCSVデータのみを返してください。
-        - 先頭行はヘッダー項目の行、最終行はデータの最終行にしてください。
+        - マークダウン記法（\`\`\`csv や \`\`\` など）は絶対に使用せず、プレーンなテキストデータとして直接出力してください。
         `;
 
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`, {

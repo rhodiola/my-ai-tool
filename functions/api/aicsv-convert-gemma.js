@@ -14,7 +14,7 @@ export async function onRequestPost(context) {
         // APIキーはCloudflareの環境変数から取得
         const API_KEY = env.GEMINI_API_KEY;
         // モデルはご要望の gemini-3.1-flash-lite または gemma-3-12b-it を想定
-        const MODEL_NAME = "gemini-3.1-flash-lite";
+        const MODEL_NAME = "gemini-3.1-flash-lite-preview";
 
         // Few-Shot プロンプトの構築
         const prompt = `

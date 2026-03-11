@@ -18,31 +18,28 @@ export async function onRequestPost(context) {
 
         // Few-Shot プロンプトの構築
         const prompt = `
-あなたはデータ変換とフォーマット整形の専門家です。
-「変換用CSV」の各行を解析し、「完成形CSV」の列構成とデータ形式に厳密に合わせて変換してください。
+あなたはデータ変換の専門家です。
+「入力データ」の各列を、「完成形フォーマット」のヘッダー順序に合わせて列単位で並べ替え、かつデータ形式を「完成形フォーマットのサンプル行」に合わせて整形してください。
 
-### 1. 完成形CSV（出力の目標）
+### 1. 完成形フォーマット
 - ヘッダー: ${JSON.stringify(baseHeader)}
-- サンプルデータ（この形式に似せてください）:
-${baseSample.map(row => JSON.stringify(row)).join('\n')}
+- サンプル行（形式の正解）: ${JSON.stringify(baseSample[0])}
 
-### 2. 変換用CSV（現在のデータ構造）
+### 2. 変換用データ
 - ヘッダー: ${JSON.stringify(convertHeader)}
-- サンプルデータ（変換前）:
-${convertSample.map(row => JSON.stringify(row)).join('\n')}
-
-### 3. ユーザーからの個別指示
-${comment || "特になし"}
-
-### 変換の厳守ルール
-- 「完成形CSV」のヘッダー順に従って列を配置してください。
-- 日付・数値・時間の表記、および言語（翻訳の要否）は、完成形CSVのサンプルデータに100%合わせてください。
-- 入力データに対応する列がない場合は空文字（""）にしてください。
-- 出力は **CSVの項目行とデータ行のみ** とし、解説、挨拶は一切含めないでください。
-- 各値はダブルクォートで囲み、カンマ区切りにしてください。
-
-### 変換対象データ（これを変換してください）
+- 入力データ（変換対象）:
 ${convertRows.map(row => JSON.stringify(row)).join('\n')}
+
+### 3. 変換の厳守ルール
+- 「完成形フォーマット」の各ヘッダー項目に対し、入力データの中から意味的に最も適合する列を抽出し、指定の順序に並べ替えてください。
+- 日付、時間、電話番号、数値、ステータス表記などは、サンプル行の形式をテンプレートとし、完全に統一してください。
+- 入力データに対応する項目がない場合は空欄（""）としてください。
+- 全角/半角の統一、不要な空白の削除を自動で行ってください。
+- ユーザー指示: ${comment || "特になし"}
+
+### 出力規定
+- 完成形フォーマットのヘッダー行を含めたCSV形式のみを出力してください。
+- 前置きや解説は一切含めず、純粋なCSVデータのみを返してください。
 `;
 
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`, {
@@ -51,7 +48,7 @@ ${convertRows.map(row => JSON.stringify(row)).join('\n')}
             body: JSON.stringify({
                 contents: [{ parts: [{ text: prompt }] }],
                 generationConfig: {
-                    temperature: 0.1, // 一貫性を高めるために低めに設定
+                    temperature: 0.1,
                 }
             })
         });

@@ -116,7 +116,7 @@ export async function onRequestPost(context) {
     const rateKey = `rate_${toolName}_${ip}`
 
     let count = await env.RATE_LIMIT.get(rateKey)
-    count = count ? parseInt(count) : 0
+    count = count ? parseInt(count, 10) : 0
 
     if (count >= 20) {
         return Response.json(
@@ -147,7 +147,7 @@ export async function onRequestPost(context) {
     --------------------------- */
 
     const cacheSource = JSON.stringify({
-        version: 3,
+        version: 4,
         model: "gemma-3-12b-it",
         baseHeader,
         baseSample,
@@ -163,7 +163,7 @@ export async function onRequestPost(context) {
        Workers Cache
     --------------------------- */
 
-    let cacheResponse = await cache.match(cacheRequest)
+    const cacheResponse = await cache.match(cacheRequest)
 
     if (cacheResponse) {
         const cached = await cacheResponse.json()
@@ -174,7 +174,7 @@ export async function onRequestPost(context) {
        KV Cache
     --------------------------- */
 
-    let kv = await env.AI_CACHE.get(cacheKey)
+    const kv = await env.AI_CACHE.get(cacheKey)
 
     if (kv) {
         const cached = JSON.parse(kv)
@@ -259,7 +259,7 @@ export async function onRequestPost(context) {
         )
     }
 
-    const normalizedRules = normalizeRules(baseHeader, rules)
+    const normalizedRules = normalizeRules(baseHeader, baseSample, mapping, rules)
 
     /* ---------------------------
        キャッシュ保存
@@ -295,12 +295,10 @@ export async function onRequestPost(context) {
 
         const indexMap = baseHeader.map(col => {
             const source = mapping[col]
-            const idx = convertHeader.indexOf(source)
-            return idx
+            return convertHeader.indexOf(source)
         })
 
-        const result = []
-        result.push(baseHeader)
+        const result = [baseHeader]
 
         for (const row of convertRows) {
 
@@ -426,6 +424,7 @@ Important rules:
 - If the user instruction conflicts with inference, follow user instruction.
 - Identifier-like columns should usually keep original string form.
 - Avoid numeric normalization for IDs, codes, SKUs, order numbers, customer numbers, or similar identifier fields.
+- If a base column name strongly implies date / datetime / phone / postal data, prefer the matching normalization action.
 - Return JSON only.
 - No explanation.
 
@@ -610,26 +609,13 @@ function improveMappings(baseHeader, convertHeader, mapping, comment) {
 
     const result = { ...mapping }
 
-    /* 1. コメント明示指定を最優先補完 */
     applyCommentHints(result, baseHeader, convertHeader, comment)
-
-    /* 2. サンプル値整合性で危険なID対応を除去 */
-    clearUnsafeIdentifierMappings(result, baseHeader, convertHeader)
-
-    /* 3. 正規化一致補完 */
+    clearUnsafeIdentifierMappings(result, baseHeader)
     fillByNormalizedExactMatch(result, baseHeader, convertHeader)
-
-    /* 4. identifier 同士の補完 */
     fillIdentifierMatches(result, baseHeader, convertHeader)
-
-    /* 5. 類似度補完 */
     fillBySimilarity(result, baseHeader, convertHeader)
-
-    /* 6. source列の重複解消 */
     resolveDuplicateSourceAssignments(result, baseHeader, convertHeader)
-
-    /* 7. 最終安全確認 */
-    clearUnsafeIdentifierMappings(result, baseHeader, convertHeader)
+    clearUnsafeIdentifierMappings(result, baseHeader)
 
     return result
 }
@@ -669,23 +655,6 @@ function applyCommentHints(result, baseHeader, convertHeader, comment) {
 
         if (result[baseCol]) continue
 
-        if (normalizeHeader(baseCol) === "id") {
-            for (const sourceCol of convertHeader) {
-                const patterns = [
-                    `${baseCol} は ${sourceCol}`,
-                    `${baseCol}は${sourceCol}`,
-                    `${baseCol} = ${sourceCol}`,
-                    `${baseCol}=${sourceCol}`
-                ]
-                if (patterns.some(p => text.includes(p))) {
-                    result[baseCol] = sourceCol
-                    break
-                }
-            }
-        }
-
-        if (result[baseCol]) continue
-
         const baseNorm = normalizeHeader(baseCol)
         if (normalizedSourceMap.has(baseNorm) && text.includes(baseCol)) {
             result[baseCol] = normalizedSourceMap.get(baseNorm)
@@ -693,7 +662,7 @@ function applyCommentHints(result, baseHeader, convertHeader, comment) {
     }
 }
 
-function clearUnsafeIdentifierMappings(result, baseHeader, convertHeader) {
+function clearUnsafeIdentifierMappings(result, baseHeader) {
     for (const baseCol of baseHeader) {
         const sourceCol = result[baseCol]
         if (!sourceCol) continue
@@ -744,10 +713,7 @@ function fillByNormalizedExactMatch(result, baseHeader, convertHeader) {
 function fillIdentifierMatches(result, baseHeader, convertHeader) {
 
     const used = new Set(Object.values(result).filter(Boolean))
-    const sourceIdentifiers = convertHeader.filter(h =>
-        normalizeHeader(h) === "id" ||
-        normalizeHeader(h).endsWith("id")
-    )
+    const sourceIdentifiers = convertHeader.filter(h => isIdentifierHeader(h))
 
     for (const baseCol of baseHeader) {
         if (result[baseCol]) continue
@@ -937,7 +903,6 @@ function isIdentifierHeader(value) {
     const keywords = [
         "id",
         "userid",
-        "userid",
         "customerid",
         "clientid",
         "memberid",
@@ -981,7 +946,7 @@ function identifierRank(value) {
    Rules normalize
 --------------------------- */
 
-function normalizeRules(baseHeader, rules) {
+function normalizeRules(baseHeader, baseSample, mapping, rules) {
 
     const allowed = new Set([
         "trim",
@@ -1006,6 +971,10 @@ function normalizeRules(baseHeader, rules) {
         let filtered = actions
             .filter(v => typeof v === "string" && allowed.has(v))
             .filter((v, i, arr) => arr.indexOf(v) === i)
+
+        const sourceHeader = mapping?.[header] || ""
+
+        autoAddNormalizationActions(filtered, header, sourceHeader, baseHeader, baseSample)
 
         if (isIdentifierHeader(header)) {
             filtered = filtered.filter(action => ![
@@ -1035,6 +1004,192 @@ function normalizeRules(baseHeader, rules) {
     }
 
     return result
+}
+
+function autoAddNormalizationActions(filtered, baseHeader, sourceHeader, allBaseHeaders, baseSample) {
+
+    if (!filtered.includes("trim")) {
+        filtered.unshift("trim")
+    }
+
+    const sampleValues = getColumnSampleValues(baseHeader, allBaseHeaders, baseSample)
+
+    if (!filtered.includes("normalize_datetime") && !filtered.includes("normalize_date")) {
+        if (
+            headerLooksLikeDatetime(baseHeader) ||
+            headerLooksLikeDatetime(sourceHeader) ||
+            columnLooksLikeDatetime(sampleValues)
+        ) {
+            filtered.push("normalize_datetime")
+        } else if (
+            headerLooksLikeDate(baseHeader) ||
+            headerLooksLikeDate(sourceHeader) ||
+            columnLooksLikeDate(sampleValues)
+        ) {
+            filtered.push("normalize_date")
+        }
+    }
+
+    if (!filtered.includes("normalize_phone")) {
+        if (
+            headerLooksLikePhone(baseHeader) ||
+            headerLooksLikePhone(sourceHeader) ||
+            columnLooksLikePhone(sampleValues)
+        ) {
+            filtered.push("normalize_phone")
+        }
+    }
+
+    if (!filtered.includes("normalize_postal")) {
+        if (
+            headerLooksLikePostal(baseHeader) ||
+            headerLooksLikePostal(sourceHeader) ||
+            columnLooksLikePostal(sampleValues)
+        ) {
+            filtered.push("normalize_postal")
+        }
+    }
+
+    return filtered
+}
+
+function getColumnSampleValues(targetHeader, allBaseHeaders, baseSample) {
+    if (!Array.isArray(allBaseHeaders) || !Array.isArray(baseSample)) return []
+
+    const index = allBaseHeaders.indexOf(targetHeader)
+    if (index === -1) return []
+
+    return baseSample
+        .map(row => Array.isArray(row) ? row[index] : "")
+        .filter(v => v !== undefined && v !== null && String(v).trim() !== "")
+}
+
+function headerLooksLikeDate(header) {
+    const raw = String(header || "")
+    const n = normalizeHeader(header)
+
+    return (
+        raw.includes("日") ||
+        raw.includes("年月日") ||
+        n.includes("date") ||
+        n.includes("day") ||
+        n.includes("birthday") ||
+        n.includes("birthdate") ||
+        n.includes("signupdate")
+    )
+}
+
+function headerLooksLikeDatetime(header) {
+    const raw = String(header || "")
+    const n = normalizeHeader(header)
+
+    return (
+        raw.includes("日時") ||
+        raw.includes("時刻") ||
+        n.includes("datetime") ||
+        n.includes("timestamp") ||
+        n.includes("createdat") ||
+        n.includes("updatedat") ||
+        n.includes("time")
+    )
+}
+
+function headerLooksLikePhone(header) {
+    const raw = String(header || "")
+    const n = normalizeHeader(header)
+
+    return (
+        raw.includes("電話") ||
+        raw.toLowerCase().includes("tel") ||
+        n.includes("phone") ||
+        n.includes("tel") ||
+        n.includes("mobile") ||
+        n.includes("fax")
+    )
+}
+
+function headerLooksLikePostal(header) {
+    const raw = String(header || "")
+    const n = normalizeHeader(header)
+
+    return (
+        raw.includes("郵便") ||
+        raw.includes("〒") ||
+        n.includes("postal") ||
+        n.includes("zipcode") ||
+        n.includes("zip") ||
+        n.includes("postcode")
+    )
+}
+
+function columnLooksLikeDate(values) {
+    return detectByThreshold(values, looksLikeDateOnly, 0.6)
+}
+
+function columnLooksLikeDatetime(values) {
+    return detectByThreshold(values, looksLikeDateTimeOnly, 0.6)
+}
+
+function columnLooksLikePhone(values) {
+    return detectByThreshold(values, looksLikePhoneValue, 0.7)
+}
+
+function columnLooksLikePostal(values) {
+    return detectByThreshold(values, looksLikePostalValue, 0.7)
+}
+
+function detectByThreshold(values, judge, threshold) {
+    if (!Array.isArray(values) || values.length === 0) return false
+
+    let checked = 0
+    let hits = 0
+
+    for (const value of values) {
+        const s = String(value ?? "").trim()
+        if (!s) continue
+
+        checked++
+        if (judge(s)) hits++
+    }
+
+    if (checked === 0) return false
+
+    return (hits / checked) >= threshold
+}
+
+function looksLikeDateOnly(value) {
+    const parsed = parseDateTimeParts(value)
+    return !!parsed && parsed.type === "date"
+}
+
+function looksLikeDateTimeOnly(value) {
+    const parsed = parseDateTimeParts(value)
+    return !!parsed && parsed.type === "datetime"
+}
+
+function looksLikePhoneValue(value) {
+    const s = String(value).trim()
+    if (!s) return false
+    if (/@/.test(s)) return false
+    if (/[A-Za-z]{3,}/.test(s)) return false
+
+    const digits = s.replace(/\D/g, "")
+    if (digits.length < 9 || digits.length > 15) return false
+
+    return /^[+\d()\-\s]+$/.test(s)
+}
+
+function looksLikePostalValue(value) {
+    const s = String(value).trim()
+    if (!s) return false
+    if (/@/.test(s)) return false
+
+    if (/^\d{3}\-\d{4}$/.test(s)) return true
+    if (/^\d{5,7}$/.test(s)) return true
+    if (/^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/i.test(s)) return true
+    if (/^[A-Za-z]{1,2}\d[A-Za-z\d]?\s?\d[A-Za-z]{2}$/i.test(s)) return true
+
+    return false
 }
 
 /* ---------------------------
@@ -1100,12 +1255,12 @@ function applyRule(value, rule) {
         }
 
         if (action === "normalize_phone") {
-            out = out.replace(/[^\d+]/g, "")
+            out = normalizePhone(out)
             continue
         }
 
         if (action === "normalize_postal") {
-            out = out.replace(/[^\d\-]/g, "")
+            out = normalizePostal(out)
             continue
         }
     }
@@ -1146,6 +1301,10 @@ function normalizeDateLike(value, withTime) {
 
     if (!parsed.year || !parsed.month || !parsed.day) return value
 
+    if (parsed.type === "date") {
+        return formatDate(parsed.year, parsed.month, parsed.day)
+    }
+
     return formatDateTime(
         parsed.year,
         parsed.month,
@@ -1154,6 +1313,31 @@ function normalizeDateLike(value, withTime) {
         parsed.minute ?? 0,
         parsed.second ?? 0
     )
+}
+
+function normalizePhone(value) {
+    const raw = String(value).trim()
+    if (!raw) return raw
+
+    const keepPlus = raw.startsWith("+")
+    const digits = raw.replace(/\D/g, "")
+    if (!digits) return raw
+
+    return keepPlus ? `+${digits}` : digits
+}
+
+function normalizePostal(value) {
+    const raw = String(value).trim()
+    if (!raw) return raw
+
+    if (/^\d{3}\-\d{4}$/.test(raw)) return raw
+
+    const digits = raw.replace(/\D/g, "")
+    if (/^\d{7}$/.test(digits)) {
+        return `${digits.slice(0, 3)}-${digits.slice(3)}`
+    }
+
+    return raw.replace(/\s+/g, " ").trim()
 }
 
 /* ---------------------------
@@ -1202,6 +1386,7 @@ function parseDateTimeParts(input) {
         const ss = m[6] !== undefined ? Number(m[6]) : 0
 
         if (!isValidDate(y, mo, d)) return null
+        if (hh !== undefined && !isValidTime(hh, mm, ss)) return null
 
         return {
             type: hh !== undefined || mm !== undefined ? "datetime" : "date",
@@ -1237,6 +1422,7 @@ function parseDateTimeParts(input) {
         }
 
         if (!isValidDate(y, mo, d)) return null
+        if (hh !== undefined && !isValidTime(hh, mm, ss)) return null
 
         return {
             type: hh !== undefined || mm !== undefined ? "datetime" : "date",

@@ -358,6 +358,7 @@ Important rules:
 - No explanation.
 - Prefer identifier columns to identifier columns (example: id, user_id, customer_id, order_id, sku, code).
 - Do not map identifier columns to non-identifier columns unless strongly supported.
+- If the base column is exactly "id", do not map it to a more specific identifier such as user_id, customer_id, order_id, member_id unless the sample values clearly align or the user instruction explicitly says to do so.
 
 Base CSV header:
 ${JSON.stringify(baseHeader)}
@@ -592,6 +593,13 @@ function chooseBetterMappedColumn(baseCol, v1, v2) {
     if (n1 === baseNorm && n2 !== baseNorm) return v1
     if (n2 === baseNorm && n1 !== baseNorm) return v2
 
+    if (baseNorm === "id") {
+        const v1General = n1 === "id"
+        const v2General = n2 === "id"
+        if (v1General && !v2General) return v1
+        if (v2General && !v1General) return v2
+    }
+
     if (isIdentifierHeader(baseCol) && isIdentifierHeader(v1) && !isIdentifierHeader(v2)) return v1
     if (isIdentifierHeader(baseCol) && isIdentifierHeader(v2) && !isIdentifierHeader(v1)) return v2
 
@@ -605,17 +613,23 @@ function improveMappings(baseHeader, convertHeader, mapping, comment) {
     /* 1. コメント明示指定を最優先補完 */
     applyCommentHints(result, baseHeader, convertHeader, comment)
 
-    /* 2. 正規化一致補完 */
+    /* 2. サンプル値整合性で危険なID対応を除去 */
+    clearUnsafeIdentifierMappings(result, baseHeader, convertHeader)
+
+    /* 3. 正規化一致補完 */
     fillByNormalizedExactMatch(result, baseHeader, convertHeader)
 
-    /* 3. identifier 同士の補完 */
+    /* 4. identifier 同士の補完 */
     fillIdentifierMatches(result, baseHeader, convertHeader)
 
-    /* 4. 類似度補完 */
+    /* 5. 類似度補完 */
     fillBySimilarity(result, baseHeader, convertHeader)
 
-    /* 5. source列の重複解消 */
+    /* 6. source列の重複解消 */
     resolveDuplicateSourceAssignments(result, baseHeader, convertHeader)
+
+    /* 7. 最終安全確認 */
+    clearUnsafeIdentifierMappings(result, baseHeader, convertHeader)
 
     return result
 }
@@ -679,6 +693,31 @@ function applyCommentHints(result, baseHeader, convertHeader, comment) {
     }
 }
 
+function clearUnsafeIdentifierMappings(result, baseHeader, convertHeader) {
+    for (const baseCol of baseHeader) {
+        const sourceCol = result[baseCol]
+        if (!sourceCol) continue
+
+        if (!isSafeIdentifierMapping(baseCol, sourceCol)) {
+            result[baseCol] = ""
+        }
+    }
+}
+
+function isSafeIdentifierMapping(baseCol, sourceCol) {
+    const baseNorm = normalizeHeader(baseCol)
+    const sourceNorm = normalizeHeader(sourceCol)
+
+    if (!baseNorm || !sourceNorm) return false
+    if (baseNorm === sourceNorm) return true
+
+    if (baseNorm === "id") {
+        return sourceNorm === "id"
+    }
+
+    return true
+}
+
 function fillByNormalizedExactMatch(result, baseHeader, convertHeader) {
 
     const used = new Set(Object.values(result).filter(Boolean))
@@ -714,19 +753,21 @@ function fillIdentifierMatches(result, baseHeader, convertHeader) {
         if (result[baseCol]) continue
         if (!isIdentifierHeader(baseCol)) continue
 
-        const baseRank = identifierRank(baseCol)
-
         let best = ""
         let bestScore = -1
 
         for (const sourceCol of sourceIdentifiers) {
             if (used.has(sourceCol)) continue
+            if (!isSafeIdentifierMapping(baseCol, sourceCol)) continue
 
             let score = 0
-            const srcRank = identifierRank(sourceCol)
 
-            if (baseRank === srcRank) score += 100
             if (normalizeHeader(baseCol) === normalizeHeader(sourceCol)) score += 1000
+
+            const baseRank = identifierRank(baseCol)
+            const srcRank = identifierRank(sourceCol)
+            if (baseRank && baseRank === srcRank) score += 120
+
             if (containsToken(sourceCol, baseCol) || containsToken(baseCol, sourceCol)) score += 30
 
             const overlap = tokenOverlapScore(baseCol, sourceCol)
@@ -757,6 +798,7 @@ function fillBySimilarity(result, baseHeader, convertHeader) {
 
         for (const sourceCol of convertHeader) {
             if (used.has(sourceCol)) continue
+            if (!isSafeIdentifierMapping(baseCol, sourceCol)) continue
 
             const score = headerSimilarityScore(baseCol, sourceCol)
 

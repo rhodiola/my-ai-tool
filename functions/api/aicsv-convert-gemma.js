@@ -12,7 +12,7 @@ export async function onRequestPost(context) {
 
         // APIキーはCloudflareの環境変数から取得
         const API_KEY = env.GEMINI_API_KEY;
-        // モデルはご要望の gemini-3.1-flash-lite または gemma-3-12b-it を想定
+        // モデルはご要望の gemini-3.1-flash-lite または gemma-3-27b-it
         const MODEL_NAME = "gemma-3-27b-it";
 
         // Few-Shot プロンプトの構築
@@ -36,7 +36,7 @@ export async function onRequestPost(context) {
         - 1行だけで判断せず、複数行で共通する形式を優先すること
         - 日付、時間、電話番号、数値、ステータス表記などは、サンプル行の形式をテンプレートとし、項目単位で完全に統一してください。
         - 言語が違う場合は翻訳して揺らぎを持たせて関連性を調べて下さい。その際は英語表記を優先して下さい。
-        - 金額、価格は数値として判断する。通貨記号、カンマ、文字を除去してから比較する。
+        - ユーザー指示による数値比較は、文字を除去して数学的に評価すること。
         - 入力データに対応する項目がない場合は空欄（""）としてください。
         - 全角/半角の統一、不要な空白の削除を自動で行ってください。
         - ユーザー指示: ${comment || "特になし"}
@@ -53,7 +53,7 @@ export async function onRequestPost(context) {
             body: JSON.stringify({
                 contents: [{ parts: [{ text: prompt }] }],
                 generationConfig: {
-                    temperature: 0.1,
+                    temperature: 0,
                 }
             })
         });
@@ -80,4 +80,5 @@ export async function onRequestPost(context) {
             headers: { "Content-Type": "application/json" }
         });
     }
+
 }

@@ -5,75 +5,226 @@
     <link rel="alternate" hreflang="ja" href="https://ai.npaso.com/">
     <link rel="alternate" hreflang="en" href="https://ai.npaso.com/en/">
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Tools</title>
 
     <style>
+        :root {
+            /* ポップなカラーパレット */
+            --primary: #8b5cf6;
+            /* 紫 */
+            --accent: #14b8a6;
+            /* ティール */
+            --bg: #ffffff;
+            --bg-alt: #f5f3ff;
+            /* 薄い紫の背景 */
+            --text-main: #1e1b4b;
+            /* 濃い紺 */
+            --text-sub: #6d28d9;
+            /* 紫のサブテキスト */
+            --card-shadow: 0 10px 0 0 rgba(139, 92, 246, 0.1);
+            /* ポップなオフセットシャドウ */
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            background: #f5f6f8;
+            font-family: 'Inter', 'Quicksand', 'Segoe UI', system-ui, sans-serif;
+            /* 少し丸みのあるフォントを優先 */
+            background-color: var(--bg-alt);
+            background-image:
+                radial-gradient(circle at 10% 20%, rgba(20, 184, 166, 0.05) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.05) 0%, transparent 20%);
+            color: var(--text-main);
             margin: 0;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
         }
 
         header {
-            background: #2563eb;
-            color: white;
-            padding: 30px 0;
+            padding: 100px 40px 60px;
+            max-width: 1100px;
+            margin: 0 auto;
             text-align: center;
         }
 
+        header h1 {
+            margin: 0;
+            font-size: clamp(3rem, 10vw, 4.5rem);
+            font-weight: 900;
+            letter-spacing: -0.05em;
+            line-height: 1;
+            /* グラデーションテキスト */
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        header p {
+            margin: 20px 0 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-sub);
+            letter-spacing: -0.01em;
+        }
+
         .container {
-            max-width: 900px;
-            margin: 40px auto;
-            padding: 20px;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 40px 100px;
+        }
+
+        .lang {
+            margin-bottom: 50px;
+            text-align: right;
+        }
+
+        .lang a {
+            font-size: 14px;
+            font-weight: 700;
+            text-decoration: none;
+            color: var(--primary);
+            background: #ffffff;
+            border: 2px solid var(--primary);
+            padding: 8px 24px;
+            border-radius: 99px;
+            /* 完全な丸 */
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            /* 跳ねるようなアニメーション */
+        }
+
+        .lang a:hover {
+            transform: scale(1.1);
+            background: var(--primary);
+            color: #ffffff;
+            box-shadow: 0 5px 15px rgba(139, 92, 246, 0.3);
+        }
+
+        h2 {
+            font-size: 0.9rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: var(--accent);
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+        }
+
+        h2::after {
+            content: "";
+            flex-grow: 1;
+            height: 2px;
+            background: var(--accent);
+            margin-left: 20px;
+            border-radius: 2px;
+            opacity: 0.3;
         }
 
         .tools {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 30px;
         }
 
         .tool {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            background: #ffffff;
+            padding: 50px 40px;
+            border-radius: 24px;
+            /* 大きな丸み */
+            border: 2px solid var(--primary);
+            box-shadow: var(--card-shadow);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tool::before {
+            content: "";
+            position: absolute;
+            top: -50px;
+            right: -50px;
+            width: 100px;
+            height: 100px;
+            background: var(--primary);
+            border-radius: 50%;
+            opacity: 0.05;
+        }
+
+        .tool:hover {
+            transform: translateY(-10px) rotate(1deg);
+            /* 持ち上がって少し傾く */
+            box-shadow: 0 20px 0 0 rgba(139, 92, 246, 0.05);
+            border-color: var(--accent);
         }
 
         .tool h3 {
-            margin-top: 0;
+            margin: 0 0 16px;
+            font-size: 1.75rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            line-height: 1.2;
+            color: var(--primary);
+        }
+
+        .tool p {
+            color: var(--text-main);
+            font-size: 1rem;
+            font-weight: 500;
+            line-height: 1.6;
+            margin: 0 0 40px;
         }
 
         .tool a {
-            display: inline-block;
-            margin-top: 10px;
-            padding: 8px 14px;
-            background: #2563eb;
-            color: white;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            /* 幅いっぱい */
+            font-size: 16px;
+            font-weight: 800;
+            color: #ffffff;
+            background: var(--primary);
             text-decoration: none;
-            border-radius: 4px;
+            padding: 16px;
+            border-radius: 12px;
+            transition: all 0.2s;
+            box-shadow: 0 5px 0 0 #6d28d9;
+            /* ボタンの下の影 */
         }
 
         .tool a:hover {
-            background: #1e4fd8;
+            background: var(--accent);
+            box-shadow: 0 5px 0 0 #0f766e;
+            transform: translateY(-2px);
         }
 
-        .lang {
-            text-align: center;
-            margin-top: 20px;
-        }
-
-        .lang a {
-            margin: 0 10px;
-            text-decoration: none;
-            color: #2563eb;
+        .tool a:active {
+            transform: translateY(3px);
+            /* 押した沈み込み */
+            box-shadow: 0 2px 0 0 #0f766e;
         }
 
         footer {
+            padding: 60px 40px;
+            max-width: 1100px;
+            margin: 0 auto;
             text-align: center;
-            margin-top: 60px;
-            color: #777;
+            border-top: 2px solid rgba(139, 92, 246, 0.1);
             font-size: 14px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        @media (max-width: 768px) {
+
+            header,
+            .container,
+            .tool {
+                padding: 40px 24px;
+            }
+
+            header h1 {
+                font-size: 3rem;
+            }
         }
     </style>
 

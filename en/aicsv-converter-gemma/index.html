@@ -178,13 +178,41 @@
         input[type=file] {
             display: none;
         }
+
+        /* progress UI */
+        #progressBox {
+            display: none;
+            margin-top: 25px;
+        }
+
+        #progressText {
+            font-size: 14px;
+            color: #444;
+            margin-bottom: 8px;
+        }
+
+        #progressOuter {
+            width: 420px;
+            height: 14px;
+            background: #e5e7eb;
+            border-radius: 7px;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+
+        #progressBar {
+            width: 0%;
+            height: 100%;
+            background: #2563eb;
+            transition: width .3s;
+        }
     </style>
 </head>
 
 <body>
 
     <div class="top-link">
-        <a href="/en/">← Back to Home</a>
+        <a href="/">← Back to Top</a>
     </div>
 
     <div class="wrapper">
@@ -192,15 +220,15 @@
         <h1>AI CSV Converter (Gemma)</h1>
 
         <div class="subtitle">
-            AI analyzes the CSV structure and converts it into the format of the target CSV.<br>
-            Column names and data display formats are also adjusted and assigned to the most relevant fields.
+            AI analyzes the CSV structure and converts it into the same format as the completed CSV.<br>
+            Field names and data display formats are also formatted and assigned to the most relevant fields.
         </div>
 
         <div class="drop-area-container">
 
             <div id="baseDrop" class="drop-area">
-                <div class="drop-title">Target CSV</div>
-                <div class="drop-desc">Drop file or click to select</div>
+                <div class="drop-title">Completed CSV (Header Required)</div>
+                <div class="drop-desc">Drop or click to select</div>
 
                 <div class="status">
                     <span id="baseStatus">Not loaded</span>
@@ -214,8 +242,8 @@
             </div>
 
             <div id="convertDrop" class="drop-area">
-                <div class="drop-title">Source CSV</div>
-                <div class="drop-desc">Drop file or click to select</div>
+                <div class="drop-title">CSV to Convert (Header Required)</div>
+                <div class="drop-desc">Drop or click to select</div>
 
                 <div class="status">
                     <span id="convertStatus">Not loaded</span>
@@ -231,29 +259,37 @@
         </div>
 
         <div class="comment-box">
-            <div style="margin-bottom:8px;">Comment for AI (optional)</div>
+            <div style="margin-bottom:8px;">Comment to AI (Optional)</div>
             <textarea id="userComment" maxlength="300"
-                placeholder="You can specify the conversion method here. It is not good at comparing numbers. (Example)  Valid should be displayed as active."></textarea>
+                placeholder="You can provide instructions for the conversion here. It is not good at numerical comparisons. (Example) Display active as Enabled"></textarea>
         </div>
 
         <button id="runBtn" disabled>
-            Generate Converted CSV
+            Generate AI-Converted CSV
         </button>
 
+        <div id="progressBox">
+            <div id="progressText"></div>
+            <div id="progressOuter">
+                <div id="progressBar"></div>
+            </div>
+        </div>
+
         <div class="limit-box">
-            <b>Guidelines and limits</b><br>
-            • Source CSV is expected to contain <b>up to 100 rows</b>.<br>
-            • CSV files with too many columns or extremely large size may fail to process.<br>
-            • Since the browser reads the CSV and checks its contents, very large CSV files may cause slower
-            performance.
+            <b>Guidelines and Limits</b><br>
+            ・The CSV to convert is intended to support <b>up to 300 rows</b>.<br>
+            ・Processing is done in batches of 100 rows
+            (<b>about 1.5 minutes</b>) at a time.<br>
+            ・CSV files with too many columns or extremely large CSV files may fail to process.<br>
+            ・Because the CSV is loaded and checked in the browser, very large CSV files may cause slow performance.
         </div>
 
         <div class="note">
-            * The output CSV is generated in <b>UTF-8 (with BOM)</b> format and can be opened in standard editors or
+            ※The output CSV is created in <b>UTF-8 (with BOM)</b> format and can be opened in standard Notepad or
             Excel.<br>
-            * Because the conversion is performed automatically by AI, the result may not always be perfect. Please
-            review the output data before use.<br>
-            The site owner is not responsible for any damages resulting from the use of this tool.
+            ※Because this is an automatic AI conversion, the results may not be perfect. Please be sure to review the
+            output data before using it.<br>
+            This site assumes no responsibility for any damages arising from the use of this tool.
         </div>
 
     </div>
@@ -262,10 +298,11 @@
 
         const MAX_COMMENT_LENGTH = 300
         const MAX_COLUMNS = 15
-        const MAX_CONVERT_ROWS = 100
+        const MAX_CONVERT_ROWS = 300
         const WARN_FILE_SIZE_BYTES = 5 * 1024 * 1024
         const HARD_FILE_SIZE_BYTES = 12 * 1024 * 1024
         const SAMPLE_ROW_COUNT = 10
+        const CHUNK_SIZE = 100
 
         let baseCSV = ""
         let convertCSV = ""
@@ -277,6 +314,18 @@
         let convertInfo = null
 
         const runBtn = document.getElementById("runBtn")
+
+        const progressBox = document.getElementById("progressBox")
+        const progressBar = document.getElementById("progressBar")
+        const progressText = document.getElementById("progressText")
+
+        function chunkArray(arr, size) {
+            const result = []
+            for (let i = 0; i < arr.length; i += size) {
+                result.push(arr.slice(i, i + size))
+            }
+            return result
+        }
 
         function parseLines(text) {
             return text
@@ -318,7 +367,6 @@
             }
 
             result.push(current)
-
             return result
         }
 
@@ -330,6 +378,7 @@
         }
 
         function countFilledCells(row) {
+
             let count = 0
 
             for (const v of row) {
@@ -376,6 +425,7 @@
                     isCompleteEnough,
                     score
                 }
+
             })
 
             const filtered = scored.filter(item => item.isCompleteEnough)
@@ -405,23 +455,23 @@
             }
 
             if (header.length === 0) {
-                errors.push("Could not read the header.")
+                errors.push("The header could not be read.")
             }
 
             if (header.length > MAX_COLUMNS) {
-                errors.push(`Too many columns. Maximum allowed is ${MAX_COLUMNS}.`)
+                errors.push(`Too many columns. The maximum is ${MAX_COLUMNS} columns.`)
             }
 
             if (dataRows.length > MAX_CONVERT_ROWS) {
-                errors.push(`Too many rows. Maximum allowed is ${MAX_CONVERT_ROWS}.`)
+                errors.push(`Too many rows. The maximum is ${MAX_CONVERT_ROWS} rows.`)
             } else if (dataRows.length > 30000) {
-                warnings.push("Because the row count is large, processing may take longer.")
+                warnings.push("Because there are many rows, processing may take some time.")
             }
 
             if (file.size >= HARD_FILE_SIZE_BYTES) {
-                errors.push(`The file is too large. Please keep it under ${formatBytes(HARD_FILE_SIZE_BYTES)}.`)
+                errors.push(`The file size is too large. Please keep it under ${formatBytes(HARD_FILE_SIZE_BYTES)} as a guideline.`)
             } else if (file.size >= WARN_FILE_SIZE_BYTES) {
-                warnings.push(`The file is relatively large (${formatBytes(file.size)}). Processing may become slower.`)
+                warnings.push(`The file size is somewhat large (${formatBytes(file.size)}). Processing may become slow.`)
             }
 
             return {
@@ -461,6 +511,7 @@
                 console.error(error)
 
             }
+
         }
 
         function updateRunButton() {
@@ -487,6 +538,7 @@
                 document.getElementById("convertMeta").innerText =
                     info ? `Rows: ${info.rowCount} / Columns: ${info.columnCount} / Size: ${formatBytes(info.fileSize)}` : ""
             }
+
         }
 
         function setWarning(type, info) {
@@ -627,72 +679,73 @@
 
             const comment = document.getElementById("userComment").value.trim()
 
-            if (comment.length > MAX_COMMENT_LENGTH) {
-                alert(`Please keep the comment within ${MAX_COMMENT_LENGTH} characters.`)
-                runBtn.disabled = false
-                runBtn.textContent = "Generate Converted CSV"
-                return
-            }
-
             const baseRows = parseLines(baseCSV).map(r => splitCSVRow(r))
             const convertRows = parseLines(convertCSV).map(r => splitCSVRow(r))
-
-            if (baseRows.length < 2 || convertRows.length < 2) {
-                alert("The CSV content is insufficient.")
-                runBtn.disabled = false
-                runBtn.textContent = "Generate Converted CSV"
-                return
-            }
 
             const baseHeader = baseRows[0]
             const convertHeader = convertRows[0]
 
-            if (baseHeader.length > MAX_COLUMNS || convertHeader.length > MAX_COLUMNS) {
-                alert(`Too many columns. Maximum allowed is ${MAX_COLUMNS}.`)
-                runBtn.disabled = false
-                runBtn.textContent = "Generate Converted CSV"
-                return
-            }
-
             const baseBodyRows = baseRows.slice(1)
             const convertBodyRows = convertRows.slice(1)
-
-            if (convertBodyRows.length > MAX_CONVERT_ROWS) {
-                alert(`The source CSV has too many rows. Maximum allowed is ${MAX_CONVERT_ROWS}.`)
-                runBtn.disabled = false
-                runBtn.textContent = "Generate Converted CSV"
-                return
-            }
 
             const baseSample = selectBestRows(baseBodyRows, baseHeader.length, SAMPLE_ROW_COUNT)
             const convertSample = selectBestRows(convertBodyRows, convertHeader.length, SAMPLE_ROW_COUNT)
 
+            const chunks = chunkArray(convertBodyRows, CHUNK_SIZE)
+
+            progressBox.style.display = "block"
+            progressBar.style.width = "0%"
+
+            let finalCSV = ""
+            let headerWritten = false
+
             try {
 
-                const res = await fetch("/api/aicsv-convert-gemma", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        baseHeader,
-                        baseSample,
-                        convertHeader,
-                        convertSample,
-                        convertRows: convertBodyRows,
-                        comment,
-                        timestamp: Date.now()
+                for (let i = 0; i < chunks.length; i++) {
+
+                    progressText.innerText = `AI converting (${i + 1} / ${chunks.length})`
+
+                    const percent = Math.round(((i + 1) / chunks.length) * 100)
+                    progressBar.style.width = percent + "%"
+
+                    const res = await fetch("/api/aicsv-convert-gemma", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            baseHeader,
+                            baseSample,
+                            convertHeader,
+                            convertSample,
+                            convertRows: chunks[i],
+                            comment,
+                            timestamp: Date.now()
+                        })
                     })
-                })
 
-                const data = await res.json()
+                    const data = await res.json()
 
-                if (!res.ok) {
-                    alert("Error: " + (data.error || "unknown error"))
-                    return
+                    if (!res.ok) {
+                        alert("Error: " + (data.error || "unknown error"))
+                        return
+                    }
+
+                    const lines = data.csv.split("\n")
+
+                    if (!headerWritten) {
+                        finalCSV += lines.join("\n") + "\n"
+                        headerWritten = true
+                    } else {
+                        finalCSV += lines.slice(1).join("\n") + "\n"
+                    }
+
                 }
 
-                const blob = new Blob(["\uFEFF" + data.csv], { type: "text/csv;charset=utf-8" })
+                progressText.innerText = "CSV generation complete"
+                progressBar.style.width = "100%"
+
+                const blob = new Blob(["\uFEFF" + finalCSV], { type: "text/csv;charset=utf-8" })
                 const url = URL.createObjectURL(blob)
 
                 const a = document.createElement("a")
@@ -702,17 +755,18 @@
 
                 setTimeout(() => {
                     URL.revokeObjectURL(url)
-                }, 1000)
+                    progressBox.style.display = "none"
+                }, 1500)
 
             } catch (error) {
 
-                alert("Communication or conversion failed.")
+                alert("Communication or conversion processing failed.")
                 console.error(error)
 
             } finally {
 
                 runBtn.disabled = false
-                runBtn.textContent = "Generate Converted CSV"
+                runBtn.textContent = "Generate AI-Converted CSV"
                 updateRunButton()
 
             }

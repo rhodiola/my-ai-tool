@@ -62,9 +62,11 @@ ${convertRows.map(row => JSON.stringify(row)).join('\n')}
 - ユーザー指示: ${comment || "特になし"}
 
 ### 出力規定
-- 完成形フォーマットのヘッダー行を含めたCSV形式のみを出力してください。
+- 出力は1行目に完成形フォーマットのヘッダーを1回だけ含むCSV本文のみとしてください。
+- 2回目以降のヘッダー行は絶対に出力しないでください。
 - 前置きや解説は一切含めず、純粋なCSVデータのみを返してください。
-- マークダウン記法（\`\`\`csv や \`\`\` など）は絶対に使用せず、プレーンなテキストデータとして直接出力してください。
+- データの前後に ```csv、```、'''、"""、説明文、空行、注釈、見出しを一切含めないでください。
+- データの先頭行は項目行またはデータ行、データの終了業はデータ行になります。
 `;
 
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`, {

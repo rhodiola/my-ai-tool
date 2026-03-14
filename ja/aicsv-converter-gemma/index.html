@@ -179,10 +179,9 @@
             display: none;
         }
 
-        /* progress UI */
         #progressBox {
             display: none;
-            margin-top: 25px;
+            margin-top: 20px;
         }
 
         #progressText {
@@ -204,7 +203,7 @@
             width: 0%;
             height: 100%;
             background: #2563eb;
-            transition: width .3s;
+            transition: width 0.3s;
         }
     </style>
 </head>
@@ -310,18 +309,9 @@
         let convertInfo = null
 
         const runBtn = document.getElementById("runBtn")
-
         const progressBox = document.getElementById("progressBox")
         const progressBar = document.getElementById("progressBar")
         const progressText = document.getElementById("progressText")
-
-        function chunkArray(arr, size) {
-            const result = []
-            for (let i = 0; i < arr.length; i += size) {
-                result.push(arr.slice(i, i + size))
-            }
-            return result
-        }
 
         function parseLines(text) {
             return text
@@ -363,6 +353,46 @@
             }
 
             result.push(current)
+
+            return result
+        }
+
+        function detectHeaderMissing(row) {
+
+            if (!row || row.length === 0) return false
+
+            const email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+            const date = /^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/
+            const phone = /^\d{10,}$/
+            const number = /^\d+$/
+
+            let dataLike = 0
+
+            for (const v of row) {
+
+                const s = String(v ?? "").trim()
+
+                if (
+                    email.test(s) ||
+                    date.test(s) ||
+                    phone.test(s) ||
+                    number.test(s)
+                ) {
+                    dataLike++
+                }
+            }
+
+            return dataLike >= Math.ceil(row.length * 0.5)
+        }
+
+        function chunkArray(arr, size) {
+
+            const result = []
+
+            for (let i = 0; i < arr.length; i += size) {
+                result.push(arr.slice(i, i + size))
+            }
+
             return result
         }
 
@@ -374,7 +404,6 @@
         }
 
         function countFilledCells(row) {
-
             let count = 0
 
             for (const v of row) {
@@ -421,7 +450,6 @@
                     isCompleteEnough,
                     score
                 }
-
             })
 
             const filtered = scored.filter(item => item.isCompleteEnough)
@@ -440,21 +468,25 @@
             const lines = parseLines(text)
             const rows = lines.map(r => splitCSVRow(r))
 
-            const header = rows[0] || []
-            const dataRows = rows.slice(1)
+            const firstRow = rows[0] || []
+            const headerMissing = detectHeaderMissing(firstRow)
+
+            const header = headerMissing ? [] : firstRow
+            const dataRows = headerMissing ? rows : rows.slice(1)
+            const columnCount = firstRow.length
 
             const warnings = []
             const errors = []
 
-            if (rows.length < 2) {
-                errors.push("ヘッダ行とデータ行が必要です。")
+            if (dataRows.length < 1) {
+                errors.push("データ行が必要です。")
             }
 
-            if (header.length === 0) {
+            if (!headerMissing && header.length === 0) {
                 errors.push("ヘッダを読み取れませんでした。")
             }
 
-            if (header.length > MAX_COLUMNS) {
+            if (columnCount > MAX_COLUMNS) {
                 errors.push(`列数が多すぎます。最大 ${MAX_COLUMNS} 列までです。`)
             }
 
@@ -474,9 +506,10 @@
                 fileName: file.name,
                 fileSize: file.size,
                 rowCount: dataRows.length,
-                columnCount: header.length,
+                columnCount,
                 warnings,
-                errors
+                errors,
+                headerMissing
             }
         }
 
@@ -507,7 +540,6 @@
                 console.error(error)
 
             }
-
         }
 
         function updateRunButton() {
@@ -534,7 +566,6 @@
                 document.getElementById("convertMeta").innerText =
                     info ? `行数: ${info.rowCount} / 列数: ${info.columnCount} / サイズ: ${formatBytes(info.fileSize)}` : ""
             }
-
         }
 
         function setWarning(type, info) {
@@ -673,24 +704,62 @@
             runBtn.disabled = true
             runBtn.textContent = "処理中..."
 
+            progressBox.style.display = "block"
+            progressText.innerText = "AI変換を開始しています..."
+            progressBar.style.width = "0%"
+
             const comment = document.getElementById("userComment").value.trim()
+
+            if (comment.length > MAX_COMMENT_LENGTH) {
+                alert(`コメントは ${MAX_COMMENT_LENGTH} 文字以内で入力してください。`)
+                runBtn.disabled = false
+                runBtn.textContent = "AI変換CSVを生成"
+                progressBox.style.display = "none"
+                return
+            }
 
             const baseRows = parseLines(baseCSV).map(r => splitCSVRow(r))
             const convertRows = parseLines(convertCSV).map(r => splitCSVRow(r))
 
+            if (baseRows.length < 2 || convertRows.length < 1) {
+                alert("CSVの内容が不足しています。")
+                runBtn.disabled = false
+                runBtn.textContent = "AI変換CSVを生成"
+                progressBox.style.display = "none"
+                return
+            }
+
             const baseHeader = baseRows[0]
-            const convertHeader = convertRows[0]
+
+            const convertFirstRow = convertRows[0] || []
+            const headerMissing = detectHeaderMissing(convertFirstRow)
+            const convertHeader = headerMissing ? [] : convertFirstRow
+
+            if (baseHeader.length > MAX_COLUMNS || convertFirstRow.length > MAX_COLUMNS) {
+                alert(`列数が多すぎます。最大 ${MAX_COLUMNS} 列までです。`)
+                runBtn.disabled = false
+                runBtn.textContent = "AI変換CSVを生成"
+                progressBox.style.display = "none"
+                return
+            }
 
             const baseBodyRows = baseRows.slice(1)
-            const convertBodyRows = convertRows.slice(1)
+            const convertBodyRows = headerMissing ? convertRows : convertRows.slice(1)
+
+            if (convertBodyRows.length > MAX_CONVERT_ROWS) {
+                alert(`変換用CSVの行数が多すぎます。最大 ${MAX_CONVERT_ROWS} 行までです。`)
+                runBtn.disabled = false
+                runBtn.textContent = "AI変換CSVを生成"
+                progressBox.style.display = "none"
+                return
+            }
 
             const baseSample = selectBestRows(baseBodyRows, baseHeader.length, SAMPLE_ROW_COUNT)
-            const convertSample = selectBestRows(convertBodyRows, convertHeader.length, SAMPLE_ROW_COUNT)
+
+            const convertColumnLength = convertFirstRow.length
+            const convertSample = selectBestRows(convertBodyRows, convertColumnLength, SAMPLE_ROW_COUNT)
 
             const chunks = chunkArray(convertBodyRows, CHUNK_SIZE)
-
-            progressBox.style.display = "block"
-            progressBar.style.width = "0%"
 
             let finalCSV = ""
             let headerWritten = false
@@ -716,6 +785,7 @@
                             convertSample,
                             convertRows: chunks[i],
                             comment,
+                            headerMissing,
                             timestamp: Date.now()
                         })
                     })
@@ -724,6 +794,7 @@
 
                     if (!res.ok) {
                         alert("Error: " + (data.error || "unknown error"))
+                        progressBox.style.display = "none"
                         return
                     }
 
@@ -735,7 +806,6 @@
                     } else {
                         finalCSV += lines.slice(1).join("\n") + "\n"
                     }
-
                 }
 
                 progressText.innerText = "CSV生成完了"
@@ -752,12 +822,13 @@
                 setTimeout(() => {
                     URL.revokeObjectURL(url)
                     progressBox.style.display = "none"
-                }, 1500)
+                }, 1000)
 
             } catch (error) {
 
                 alert("通信または変換処理に失敗しました。")
                 console.error(error)
+                progressBox.style.display = "none"
 
             } finally {
 
